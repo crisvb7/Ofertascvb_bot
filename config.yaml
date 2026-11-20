@@ -99,7 +99,7 @@ excluir_comun:
   - '\b(concours|concorso|sorteo|giveaway|gewinnspiel)\b'
   - '\b(foto|photo|poster|affiche)\b'
   - '\bportable\b'
-  - '(lire|leer|leggere|ler|read)( bien| bem| the)? (la |a )?(description|descripcion|descrizione|descricao)'
+  - '\b(lire|lisez|leer|lee|leggere|leggi|ler|leia|read)\b.{0,20}\b(description|descripcion|descrizione|descricao)\b'
   - '\b(boite vide|scatola vuota|caixa vazia|empty box|leere verpackung)\b'
   - '\b(hs|en panne|defectueuse|guasta|kaputt|defekt|avariada)\b'
 
