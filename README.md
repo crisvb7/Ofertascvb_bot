@@ -1,8 +1,8 @@
 # Bot de ofertas de consolas 🎮
 
-Vigila **Wallapop**, **Vinted**, **Chollometro** (chollos de tiendas oficiales: Amazon, MediaMarkt,
-PcComponentes, El Corte Inglés, PlayStation Direct, Carrefour, Game, AliExpress…) y, si quieres,
-**fichas concretas de tiendas** (precio y stock). Te avisa por **Telegram** y/o **WhatsApp** cuando
+Vigila **Wallapop**, **Vinted**, **CeX**, **Cash Converters**, **Chollometro** (chollos de tiendas
+oficiales: Amazon, MediaMarkt, PcComponentes, El Corte Inglés, PlayStation Direct, Carrefour, Game,
+AliExpress…) y, si quieres, **fichas concretas de tiendas** (precio y stock). Te avisa por **Telegram** y/o **WhatsApp** cuando
 aparece una PS5 o una Xbox Series X a buen precio.
 
 **Cómo avisa**
@@ -86,9 +86,12 @@ ejecución ya lo usa.
 
 - **Ritmo**: cada 10 minutos como mucho, y GitHub a veces retrasa las ejecuciones programadas unos minutos
   en horas de mucha carga.
-- **Vinted** puede bloquear los servidores de GitHub (bloquea mucho las IPs de centros de datos). Si pasa,
-  el bot te avisa por Telegram tras varios fallos seguidos; entonces pon `vinted: false` en `config.yaml`.
-  Wallapop y Chollometro deberían ir bien.
+- **Plataformas** (probadas desde los servidores de GitHub):
+  - ✅ Wallapop, Vinted (leyendo su página de búsqueda), CeX, Cash Converters y Chollometro.
+  - ❌ Milanuncios, eBay (web), todocoleccion y Back Market bloquean a GitHub con un antibots; funcionarían
+    desde una IP de casa. rebuy carga los productos con JavaScript. Facebook Marketplace exige iniciar sesión.
+  - eBay se podría añadir con su API oficial (gratis, pide crear una cuenta de desarrollador).
+  - Si alguna deja de responder, el bot te avisa por Telegram tras varios fallos seguidos.
 - **Condiciones de GitHub**: Actions está pensado para tareas de desarrollo de software; usarlo como tarea
   programada de este tipo es una zona gris. Lo peor que suele pasar es que desactiven Actions en ese repo.
 - GitHub pausa las tareas programadas de un repo público tras 60 días sin actividad; el

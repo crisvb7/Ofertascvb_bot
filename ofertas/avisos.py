@@ -21,6 +21,8 @@ ETIQUETA_FUENTE = {
     "wallapop": "Wallapop",
     "vinted": "Vinted",
     "chollometro": "Chollometro",
+    "cex": "CeX",
+    "cashconverters": "Cash Converters",
     "tienda": "Tienda",
 }
 

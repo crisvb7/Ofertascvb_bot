@@ -68,7 +68,7 @@ class Estado:
         desde = time.time() - dias * 86400
         precios = [r[0] for r in self.db.execute(
             "SELECT precio FROM anuncios WHERE producto=? AND nuevo=0 AND precio IS NOT NULL "
-            "AND visto_ultima>=?", (producto, desde))]
+            "AND visto_ultima>=? AND fuente IN ('wallapop','vinted')", (producto, desde))]
         if not precios:
             return None, 0
         return statistics.median(precios), len(precios)

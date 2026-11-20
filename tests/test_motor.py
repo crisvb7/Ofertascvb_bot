@@ -274,3 +274,22 @@ def test_diagnostico(cfg, avisador, monkeypatch):
     assert "❌ Vinted: me bloquea (Vinted respondió 403)" in texto
     assert "Chollometro: 4 chollos nuevos en el feed; de consolas → PS5: 1, Xbox Series X: 1" in texto
     assert len(lineas) >= 5
+
+
+def test_tiendas_de_segunda_mano_en_el_ciclo_y_fuera_de_la_mediana(cfg, estado, avisador, monkeypatch):
+    from ofertas import motor as m
+    cfg.fuentes.update(cex=True, cashconverters=True, wallapop=False, vinted=False, chollometro=False)
+    def cex_falso(sesion, q):
+        return [Anuncio(fuente="cex", id="C1", titulo="Playstation 5, 825GB, Blanca", precio=590,
+                        url="https://es.webuy.com/product-detail?id=C1", ciudad="Tienda Oviedo")]
+    def cash_falso(sesion, q):
+        return [Anuncio(fuente="cashconverters", id="K1", titulo="Consola xbox series x 1tb", precio=399,
+                        url="https://www.cashconverters.es/es/es/segunda-mano/K1.html")]
+    monkeypatch.setattr(m.cex, "buscar", cex_falso)
+    monkeypatch.setattr(m.cashconverters, "buscar", cash_falso)
+    motor = m.Motor(cfg, estado, avisador, pausa=(0, 0))
+    motor.ciclo(forzar=True)
+    textos = [a.texto for a in avisador.avisos]
+    assert any("CeX" in t and "590 €" in t and "Tienda Oviedo" in t for t in textos)
+    assert any("Cash Converters" in t and "399 €" in t and "OFERTÓN" in t for t in textos)
+    assert estado.mediana("PS5") == (None, 0)          # las tiendas no cuentan para la mediana

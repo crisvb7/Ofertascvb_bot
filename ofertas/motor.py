@@ -9,14 +9,14 @@ from dataclasses import dataclass
 from . import avisos
 from .config import Config, Producto
 from .estado import Estado
-from .fuentes import chollometro, tiendas, wallapop
+from .fuentes import cashconverters, cex, chollometro, tiendas, wallapop
 from .fuentes.vinted import Vinted
 from .modelos import Anuncio
 from .red import ERRORES_RED, Bloqueado, sesion_navegador
 from .utiles import distancia_km, euros
 
 log = logging.getLogger(__name__)
-FUENTES = ("wallapop", "vinted", "chollometro", "tiendas")
+FUENTES = ("wallapop", "vinted", "cex", "cashconverters", "chollometro", "tiendas")
 FALLOS_PARA_AVISAR = 6
 
 
@@ -202,6 +202,22 @@ class Motor:
                 encontrados += self.vinted.buscar(q, prod.usado_min)
                 self._dormir()
             self.procesar(encontrados, prod, "vinted")
+
+    def _ciclo_cex(self) -> None:
+        for prod in self.cfg.productos:
+            encontrados: list[Anuncio] = []
+            for q in prod.busquedas:
+                encontrados += cex.buscar(self.sesion, q)
+                self._dormir()
+            self.procesar(encontrados, prod, "cex")
+
+    def _ciclo_cashconverters(self) -> None:
+        for prod in self.cfg.productos:
+            encontrados: list[Anuncio] = []
+            for q in prod.busquedas:
+                encontrados += cashconverters.buscar(self.sesion, q)
+                self._dormir()
+            self.procesar(encontrados, prod, "cashconverters")
 
     def _ciclo_chollometro(self) -> None:
         chollos: list[Anuncio] = []

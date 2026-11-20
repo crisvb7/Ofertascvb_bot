@@ -8,7 +8,7 @@ import logging
 
 from . import avisos
 from .config import Config, Producto
-from .fuentes import chollometro, tiendas, wallapop
+from .fuentes import cashconverters, cex, chollometro, tiendas, wallapop
 from .fuentes.vinted import Vinted
 from .modelos import Anuncio
 from .red import ERRORES_RED, MOTOR, Bloqueado, sesion_navegador
@@ -95,6 +95,17 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
                 lineas.append(_error("Vinted", e))
                 break
 
+    for nombre, clave, funcion in (("CeX", "cex", cex.buscar), ("Cash Converters", "cashconverters", cashconverters.buscar)):
+        if not cfg.activa(clave):
+            continue
+        for prod in cfg.productos:
+            try:
+                res = funcion(sesion, prod.busquedas[0])
+                lineas.append(_linea(nombre, prod, res))
+            except Exception as e:
+                lineas.append(_error(nombre, e))
+                break
+
     if cfg.activa("chollometro"):
         try:
             chollos: list[Anuncio] = []
@@ -134,176 +145,3 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
     return lineas
 
 
-
-SONDAS = {
-    "milanuncios": "https://www.milanuncios.com/anuncios/?s=ps5",
-    "cex_api": "https://wss2.cex.es.webuy.io/v3/boxes?q=ps5&firstRecord=1&count=20&sortBy=relevance&sortOrder=desc",
-    "cex_web": "https://es.webuy.com/search?stext=ps5",
-    "ebay_web": "https://www.ebay.es/sch/i.html?_nkw=ps5&_sop=10&LH_PrefLoc=1",
-    "todocoleccion": "https://www.todocoleccion.net/buscador?bu=ps5",
-    "cashconverters": "https://www.cashconverters.es/es/es/search/?q=ps5",
-    "backmarket": "https://www.backmarket.es/es-es/search?q=ps5",
-    "rebuy": "https://www.rebuy.es/comprar/search?q=ps5",
-    "vinted_portada": "https://www.vinted.es/",
-    "vinted_api": "https://www.vinted.es/api/v2/catalog/items?search_text=ps5&per_page=5",
-}
-MARCAS = ("__NEXT_DATA__", "__INITIAL_PROPS__", "application/ld+json", "window.__", "adId",
-          "boxId", "s-item", "captcha", "Just a moment", "datadome", "cf-chl", "\"items\"")
-
-
-def sonda_plataformas() -> None:
-    """Solo log: qué plataformas responden desde aquí y en qué formato."""
-    s = sesion_navegador()
-    for nombre, url in SONDAS.items():
-        try:
-            r = s.get(url, timeout=25, headers={"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"})
-            texto = r.text or ""
-            marcas = [m for m in MARCAS if m.lower() in texto.lower()]
-            log.info("Sonda %-15s %s · %s · %d bytes · %s", nombre, r.status_code,
-                     (r.headers.get("content-type") or "")[:30], len(texto), marcas)
-            log.info("Sonda %-15s  inicio: %s", nombre, " ".join(texto[:220].split()))
-        except Exception as e:
-            log.info("Sonda %-15s error: %s", nombre, str(e)[:150])
-
-
-def sonda_formatos() -> None:
-    """Solo log: dónde vienen los datos en Cash Converters, rebuy, CeX y Vinted."""
-    import json as _json
-    import re as _re
-    s = sesion_navegador()
-    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
-
-    def trozos(nombre, texto, patron, n=3, ancho=260):
-        for m in list(_re.finditer(patron, texto))[:n]:
-            ini = max(0, m.start() - 40)
-            log.info("Formato %-8s …%s…", nombre, " ".join(texto[ini:ini + ancho].split()))
-
-    try:
-        t = s.get(SONDAS["cashconverters"], timeout=25, headers=h).text
-        for b in _re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', t, _re.S)[:4]:
-            try:
-                j = _json.loads(b)
-                log.info("Formato cashconv JSON-LD @type=%s claves=%s · %s", j.get("@type") if isinstance(j, dict) else "lista",
-                         list(j.keys())[:8] if isinstance(j, dict) else len(j), " ".join(b[:300].split()))
-            except ValueError:
-                pass
-        trozos("cashconv", t, r'data-product|product-tile|product-card|"price"', 3)
-    except Exception as e:
-        log.info("Formato cashconv error %s", e)
-    try:
-        t = s.get(SONDAS["rebuy"], timeout=25, headers=h).text
-        trozos("rebuy", t, r'"items"\s*:', 2, 400)
-        trozos("rebuy", t, r'window\.__[A-Za-z_]+', 3, 120)
-    except Exception as e:
-        log.info("Formato rebuy error %s", e)
-    try:
-        t = s.get(SONDAS["cex_web"], timeout=25, headers=h).text
-        trozos("cex", t, r'(?i)algolia', 4, 220)
-        trozos("cex", t, r'boxName|sellPrice|"boxId"', 3, 220)
-        for js in sorted(set(_re.findall(r'src="([^"]+\.js)"', t)))[:12]:
-            log.info("Formato cex script %s", js)
-    except Exception as e:
-        log.info("Formato cex error %s", e)
-    try:
-        t = s.get(SONDAS["vinted_portada"], timeout=25, headers=h).text
-        rutas = sorted(set(_re.findall(r'/api/v\d/[a-z_/]+', t)))
-        log.info("Formato vinted rutas api en portada: %s", rutas[:40])
-        trozos("vinted", t, r'catalog', 3, 200)
-    except Exception as e:
-        log.info("Formato vinted error %s", e)
-
-
-def sonda_detalle() -> None:
-    """Solo log: estructura concreta de Cash Converters, rebuy, CeX (búsqueda) y Vinted (catálogo)."""
-    import json as _json
-    import re as _re
-    s = sesion_navegador()
-    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
-    try:
-        t = s.get(SONDAS["cashconverters"], timeout=25, headers=h).text
-        i = t.find('class="product-tile')
-        log.info("Detalle cashconv tile: %s", " ".join(t[i:i + 2600].split()))
-    except Exception as e:
-        log.info("Detalle cashconv error %s", e)
-    try:
-        t = s.get(SONDAS["rebuy"], timeout=25, headers=h).text
-        for m in list(_re.finditer(r'(?i)playstation 5', t))[:2]:
-            log.info("Detalle rebuy …%s…", " ".join(t[max(0, m.start() - 900):m.start() + 600].split()))
-    except Exception as e:
-        log.info("Detalle rebuy error %s", e)
-    try:
-        cuerpo = {"requests": [{"indexName": "prod_cex_es", "params":
-                  "facetFilters=%5B%5B%22availability%3AIn%20Stock%20Online%22%5D%5D&filters=boxVisibilityOnWeb%3D1"
-                  "&hitsPerPage=5&page=0&query=ps5"}]}
-        r = s.post("https://search.webuy.io/1/indexes/*/queries", data=_json.dumps(cuerpo), timeout=25,
-                   headers={"Content-Type": "application/json; charset=UTF-8", "Accept": "application/json",
-                            "Origin": "https://es.webuy.com", "Referer": "https://es.webuy.com/"})
-        log.info("Detalle cex %s %s", r.status_code, " ".join(r.text[:200].split()))
-        if r.status_code < 400:
-            hits = (r.json().get("results") or [{}])[0].get("hits") or []
-            log.info("Detalle cex %d hits; claves=%s", len(hits), sorted(hits[0].keys()) if hits else None)
-            for hit in hits[:2]:
-                log.info("Detalle cex hit: %s", {k: hit.get(k) for k in ("boxId", "boxName", "sellPrice",
-                         "categoryFriendlyName", "imageUrls", "boxBuyAllowed", "outOfStock", "ecomQuantityOnHand")})
-    except Exception as e:
-        log.info("Detalle cex error %s", e)
-    try:
-        r = s.get("https://www.vinted.es/catalog?search_text=ps5&order=newest_first", timeout=25, headers=h)
-        t = r.text
-        log.info("Detalle vinted catalog %s · %d bytes", r.status_code, len(t))
-        for patron in (r'\\?"price\\?"', r'"items"', r'catalogItems', r'"item_box"', r'/items/\d+'):
-            m = _re.search(patron, t)
-            if m:
-                log.info("Detalle vinted [%s] …%s…", patron, " ".join(t[max(0, m.start() - 200):m.start() + 400].split()))
-    except Exception as e:
-        log.info("Detalle vinted error %s", e)
-
-
-def sonda_final() -> None:
-    import json as _json
-    import re as _re
-    s = sesion_navegador()
-    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
-    for indice, params in (("prod_cex_es", "hitsPerPage=3&page=0&query=playstation%205"),
-                           ("prod_cex_es", "hitsPerPage=3&page=0&query=ps5&filters=boxVisibilityOnWeb%3D1"),
-                           ("prod_cex_uk", "hitsPerPage=1&page=0&query=ps5")):
-        try:
-            r = s.post("https://search.webuy.io/1/indexes/*/queries", timeout=25,
-                       data=_json.dumps({"requests": [{"indexName": indice, "params": params}]}),
-                       headers={"Content-Type": "application/json; charset=UTF-8", "Accept": "application/json",
-                                "Origin": "https://es.webuy.com", "Referer": "https://es.webuy.com/"})
-            res = (r.json().get("results") or [{}])[0] if r.status_code < 400 else {}
-            hits = res.get("hits") or []
-            log.info("Final cex %s [%s] -> %s nbHits=%s", indice, params[:60], r.status_code, res.get("nbHits"))
-            if hits:
-                log.info("Final cex claves=%s", sorted(hits[0].keys()))
-                log.info("Final cex hit=%s", " ".join(_json.dumps({k: hits[0].get(k) for k in hits[0]
-                         if k not in ("_highlightResult",)}, ensure_ascii=False)[:1500].split()))
-        except Exception as e:
-            log.info("Final cex error %s", e)
-    try:
-        t = s.get("https://www.vinted.es/catalog?search_text=ps5&order=newest_first", timeout=25, headers=h).text
-        ids = _re.findall(r'data-testid="product-item-id-(\d+)--overlay-link"', t)
-        log.info("Final vinted %d items en la página", len(ids))
-        for iid in ids[:3]:
-            m = _re.search(r'<img[^>]*?alt="([^"]*)"[^>]*?src="([^"]+)"[^>]*?data-testid="product-item-id-%s--image--img"' % iid, t)
-            m2 = _re.search(r'<a href="(/items/%s[^"]*)"[^>]*?title="([^"]*)"' % iid, t)
-            log.info("Final vinted %s | img=%s | href=%s | title=%s", iid, m.group(2)[:120] if m else None,
-                     m2.group(1)[:80] if m2 else None, m2.group(2)[:160] if m2 else None)
-        i = t.find("product-item-id-%s--image--img" % ids[0]) if ids else -1
-        if i > 0:
-            log.info("Final vinted html img: %s", " ".join(t[i - 700:i + 60].split()))
-    except Exception as e:
-        log.info("Final vinted error %s", e)
-    try:
-        t = s.get("https://www.cashconverters.es/es/es/search/?q=ps5&srule=most-recent&sz=48", timeout=25, headers=h).text
-        tiles = _re.findall(r'data-pid="([^"]+)" data-product-datalayer="([^"]+)"', t)
-        log.info("Final cashconv %d tiles (srule=most-recent)", len(tiles))
-        import html as _html
-        for pid, dl in tiles[:4]:
-            d = _json.loads(_html.unescape(dl))
-            log.info("Final cashconv %s %s %s %s", pid, d.get("name"), d.get("price"), d.get("variant"))
-        urls = _re.findall(r'"url":"(https://www\.cashconverters\.es/[^"]+)"', t)[:2]
-        log.info("Final cashconv urls=%s", urls)
-    except Exception as e:
-        log.info("Final cashconv error %s", e)

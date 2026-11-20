@@ -108,31 +108,73 @@ def test_wallapop_bloqueado():
         wallapop.buscar(SesionFalsa([Resp(status=403)]), "ps5", 0, 0)
 
 
-def test_vinted_renueva_cookie_y_parsea():
-    datos = {"items": [{"id": 123, "title": "PS5 Digital como nueva",
-                        "price": {"amount": "360.0", "currency_code": "EUR"},
-                        "total_item_price": {"amount": "378.7", "currency_code": "EUR"},
-                        "url": "https://www.vinted.es/items/123-ps5",
-                        "photo": {"url": "https://img/x.jpg"}, "status": "Muy bueno"}]}
-    s = SesionFalsa([Resp(), Resp(status=401), Resp(), Resp(datos=datos)])
-    v = Vinted(s)
-    a = v.buscar("ps5", 150)[0]
-    assert [ll[0] for ll in s.llamadas] == [
-        "https://www.vinted.es/", "https://www.vinted.es/api/v2/catalog/items",
-        "https://www.vinted.es/", "https://www.vinted.es/api/v2/catalog/items"]
-    assert s.llamadas[1][1]["price_from"] == 150
-    assert (a.precio, a.precio_total, a.estado, a.envio) == (360.0, 378.7, "Muy bueno", True)
+VINTED_HTML = """<div data-testid="product-item-id-111"><div data-testid="product-item-id-111--image">
+<img src="https://images1.vinted.net/t/a/310x430/x.webp?s=1" alt="PS5 Slim con lector, Marca: Sony, Estado: Muy bueno, 380.00 €, 399.70 €" class="web_ui__Image__content" data-testid="product-item-id-111--image--img"/></div>
+<a href="/items/111-ps5-slim?referrer=catalog" class="NoC3Da_new-item-box__overlay" data-testid="product-item-id-111--overlay-link" title="PS5 Slim con lector, Marca: Sony, Estado: Muy bueno, 380.00 €, 399.70 €" target="_self"></a></div>
+<div data-testid="product-item-id-222"><img src="https://images1.vinted.net/t/b.webp" alt="Mando, PS5 &amp; cable, Estado: Bueno, 1.050,00 €" class="c" data-testid="product-item-id-222--image--img"/>
+<a href="/items/222-mando?referrer=catalog" class="o" data-testid="product-item-id-222--overlay-link" title="Mando, PS5 &amp; cable, Estado: Bueno, 1.050,00 €"></a></div>"""
 
 
-def test_vinted_precio_antiguo_y_url_relativa():
-    v = Vinted(None)
-    a = v.a_anuncio({"id": 5, "title": "Xbox Series X", "price": "410.0", "url": "/items/5-x"})
-    assert a.precio == 410.0 and a.url == "https://www.vinted.es/items/5-x"
+def test_vinted_lee_la_pagina_del_catalogo():
+    s = SesionFalsa([Resp(contenido=VINTED_HTML.encode())])
+    res = Vinted(s).buscar("ps5", 150)
+    url, params, _ = s.llamadas[0]
+    assert url == "https://www.vinted.es/catalog" and params["price_from"] == 150
+    a, b = res
+    assert (a.id, a.titulo, a.precio, a.precio_total, a.estado) == ("111", "PS5 Slim con lector", 380.0, 399.7, "Muy bueno")
+    assert a.url == "https://www.vinted.es/items/111-ps5-slim" and a.imagen.startswith("https://images1.vinted.net/t/a/")
+    assert (b.titulo, b.precio, b.precio_total) == ("Mando, PS5 & cable", 1050.0, None)
 
 
 def test_vinted_bloqueado():
     with pytest.raises(Bloqueado):
-        Vinted(SesionFalsa([Resp(), Resp(status=403)])).buscar("ps5")
+        Vinted(SesionFalsa([Resp(status=403)])).buscar("ps5")
+
+
+CEX_HIT = {"boxId": "SPS5825GBW003", "boxName": "Playstation 5, 825GB, Blanca, Rebajada", "sellPrice": 590,
+           "categoryFriendlyName": "PS5 Consolas", "stores": ["Madrid Atocha", "Oviedo Uría"],
+           "inStockOnline": 1, "ecomQuantity": 3, "Condición": ["Sin Caja"],
+           "imageUrls": {"large": "https://es.static.webuy.com/product_images/Juegos/PS5 Consolas/SPS5825GBW003_l.jpg"},
+           "firstStockInDate": "2026-11-19 10:00:00"}
+
+
+class SesionPost(SesionFalsa):
+    def post(self, url, data=None, headers=None, timeout=None):
+        self.llamadas.append((url, json.loads(data), headers))
+        return self.respuestas.pop(0)
+
+
+def test_cex():
+    from ofertas.fuentes import cex
+    juego = {**CEX_HIT, "boxId": "J1", "categoryFriendlyName": "PS5 Juegos"}
+    agotada = {**CEX_HIT, "boxId": "A1", "stores": [], "inStockOnline": 0, "ecomQuantity": 0}
+    s = SesionPost([Resp(datos={"results": [{"hits": [CEX_HIT, juego, agotada]}]})])
+    res = cex.buscar(s, "ps5")
+    assert s.llamadas[0][1]["requests"][0]["indexName"] == "prod_cex_es"
+    assert len(res) == 1
+    a = res[0]
+    assert (a.precio, a.ciudad, a.envio, a.estado) == (590.0, "Tienda Oviedo Uría", True, "Sin Caja")
+    assert a.url == "https://es.webuy.com/product-detail?id=SPS5825GBW003"
+    assert " " not in a.imagen and a.imagen.endswith("PS5%20Consolas/SPS5825GBW003_l.jpg")
+    assert a.publicado is not None
+
+
+CASH_HTML = """<div class="product-tile search-link" data-pid="CC100_E1_0" data-product-datalayer="{&quot;id&quot;:&quot;CC100_E1_0&quot;,&quot;name&quot;:&quot;consola ps5 sony playstation 5&quot;,&quot;category&quot;:&quot;videojuegos y consolas/ps5/consolas/playstation 5&quot;,&quot;price&quot;:594.95,&quot;variant&quot;:&quot;Bueno&quot;}">
+<div class="image-container"><img loading="eager" class="tile-image" src="https://images.cashconverters.es/productslive/a_0.jpg?d=small" alt="x"/></div></div>
+<div class="product-tile search-link" data-pid="CC1_J_0" data-product-datalayer="{&quot;name&quot;:&quot;juego ps5 gta&quot;,&quot;category&quot;:&quot;videojuegos y consolas/ps5/juegos&quot;,&quot;price&quot;:40}">
+<img class="tile-image" src="https://images.cashconverters.es/b.jpg"/></div>"""
+
+
+def test_cashconverters():
+    from ofertas.fuentes import cashconverters
+    s = SesionFalsa([Resp(contenido=CASH_HTML.encode())])
+    res = cashconverters.buscar(s, "ps5")
+    assert s.llamadas[0][1]["srule"] == "most-recent"
+    assert len(res) == 1
+    a = res[0]
+    assert (a.id, a.titulo, a.precio, a.estado) == ("CC100_E1_0", "Consola ps5 sony playstation 5", 594.95, "Bueno")
+    assert a.url == "https://www.cashconverters.es/es/es/segunda-mano/CC100_E1_0.html"
+    assert a.imagen.startswith("https://images.cashconverters.es/productslive/a_0.jpg")
 
 
 RSS = """<?xml version="1.0" encoding="UTF-8"?>
