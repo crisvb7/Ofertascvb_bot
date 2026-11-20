@@ -133,3 +133,34 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
     avisador.enviar(avisos.Aviso(html=html.escape("\n".join(lineas)), texto="\n".join(lineas)))
     return lineas
 
+
+
+SONDAS = {
+    "milanuncios": "https://www.milanuncios.com/anuncios/?s=ps5",
+    "cex_api": "https://wss2.cex.es.webuy.io/v3/boxes?q=ps5&firstRecord=1&count=20&sortBy=relevance&sortOrder=desc",
+    "cex_web": "https://es.webuy.com/search?stext=ps5",
+    "ebay_web": "https://www.ebay.es/sch/i.html?_nkw=ps5&_sop=10&LH_PrefLoc=1",
+    "todocoleccion": "https://www.todocoleccion.net/buscador?bu=ps5",
+    "cashconverters": "https://www.cashconverters.es/es/es/search/?q=ps5",
+    "backmarket": "https://www.backmarket.es/es-es/search?q=ps5",
+    "rebuy": "https://www.rebuy.es/comprar/search?q=ps5",
+    "vinted_portada": "https://www.vinted.es/",
+    "vinted_api": "https://www.vinted.es/api/v2/catalog/items?search_text=ps5&per_page=5",
+}
+MARCAS = ("__NEXT_DATA__", "__INITIAL_PROPS__", "application/ld+json", "window.__", "adId",
+          "boxId", "s-item", "captcha", "Just a moment", "datadome", "cf-chl", "\"items\"")
+
+
+def sonda_plataformas() -> None:
+    """Solo log: qué plataformas responden desde aquí y en qué formato."""
+    s = sesion_navegador()
+    for nombre, url in SONDAS.items():
+        try:
+            r = s.get(url, timeout=25, headers={"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"})
+            texto = r.text or ""
+            marcas = [m for m in MARCAS if m.lower() in texto.lower()]
+            log.info("Sonda %-15s %s · %s · %d bytes · %s", nombre, r.status_code,
+                     (r.headers.get("content-type") or "")[:30], len(texto), marcas)
+            log.info("Sonda %-15s  inicio: %s", nombre, " ".join(texto[:220].split()))
+        except Exception as e:
+            log.info("Sonda %-15s error: %s", nombre, str(e)[:150])
