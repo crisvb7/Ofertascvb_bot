@@ -120,3 +120,30 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
         log.info(linea)
     avisador.enviar(avisos.Aviso(html=html.escape("\n".join(lineas)), texto="\n".join(lineas)))
     return lineas
+
+
+def sonda_wallapop() -> None:
+    """Solo log: cómo devuelve Wallapop la hora de publicación y el estado de un anuncio."""
+    items = wallapop.extraer_items(wallapop.ultima_respuesta or {})
+    if not items:
+        log.info("Sonda: no hay respuesta de Wallapop guardada")
+        return
+    it = items[0]
+    log.info("Sonda: created_at=%r modified_at=%r", it.get("created_at"), it.get("modified_at"))
+    s = sesion_navegador()
+    for iid in (it.get("id"), "zzzz0000inexistente"):
+        url = f"https://api.wallapop.com/api/v3/items/{iid}"
+        try:
+            r = s.get(url, headers=wallapop.CABECERAS, timeout=20)
+            log.info("Sonda: GET %s -> %s", url, r.status_code)
+            if r.status_code < 400:
+                d = r.json()
+                log.info("Sonda: claves=%s", sorted(d.keys()) if isinstance(d, dict) else type(d))
+                for k in ("reserved", "sold", "flags", "status", "is_sold", "bumped", "published",
+                          "created_at", "modified_at", "price", "shipping"):
+                    if isinstance(d, dict) and k in d:
+                        log.info("Sonda:   %s = %s", k, str(d[k])[:300])
+            else:
+                log.info("Sonda: cuerpo=%s", r.text[:300])
+        except Exception as e:
+            log.info("Sonda: error %s", e)

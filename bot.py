@@ -94,6 +94,8 @@ def main() -> int:
 
     if args.simular:
         n = motor.ciclo(forzar=True)
+        from ofertas import diagnostico
+        diagnostico.sonda_wallapop()
         log.info("Simulación terminada: %d avisos (no se ha enviado nada)", n)
         return 0
     if args.una_vez:
