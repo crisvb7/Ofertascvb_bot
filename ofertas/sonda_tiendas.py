@@ -175,3 +175,33 @@ def formatos3() -> None:
                                               ensure_ascii=False)[:200].split()))
     except Exception as e:
         log.info("F3 eci error %r", e)
+
+
+def formatos4() -> None:
+    import json as _json
+    s = sesion_navegador()
+    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
+    try:
+        t = s.get(TIENDAS["elcorteingles"], timeout=25, headers=h).text
+        i = t.find('id="product-A200069099"')
+        j = t.find("_product_preview_price", i)
+        log.info("F4 eci precio html: %s", " ".join(t[j - 200:j + 1500].split())[:1500])
+        m = re.search(r"window\.__MOONSHINE_STATE__\s*=\s*", t)
+        estado, _ = _json.JSONDecoder().raw_decode(t[m.end():])
+
+        def buscar(n, prof=0):
+            if prof > 12:
+                return
+            if isinstance(n, dict):
+                if "_uri" in n and "_status" in n:
+                    yield n
+                for v in n.values():
+                    yield from buscar(v, prof + 1)
+            elif isinstance(n, list):
+                for v in n:
+                    yield from buscar(v, prof + 1)
+        p = next(buscar(estado))
+        for clave in ("_single_sku", "algoliaData", "vendors", "promotional_actions"):
+            log.info("F4 eci %s = %s", clave, " ".join(_json.dumps(p.get(clave), ensure_ascii=False)[:900].split()))
+    except Exception as e:
+        log.info("F4 eci error %r", e)
