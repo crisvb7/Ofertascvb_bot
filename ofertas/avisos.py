@@ -87,7 +87,8 @@ class WhatsApp:
 
 class Consola:
     def enviar(self, aviso: Aviso) -> bool:
-        print("\n" + "─" * 60 + "\n" + aviso.texto + "\n" + "─" * 60)
+        foto = f"\n🖼️ {aviso.imagen}" if aviso.imagen else "\n🖼️ (sin foto)"
+        print("\n" + "─" * 60 + "\n" + aviso.texto + foto + "\n" + "─" * 60, flush=True)
         return True
 
 
@@ -124,17 +125,23 @@ def crear_avisador(cfg, solo_consola: bool = False) -> Avisador:
 # --- formato de los mensajes -------------------------------------------------
 
 def formatear(a, producto: str, motivo: str, mediana: float | None = None, muestras: int = 0,
-              distancia: float | None = None, sospechoso: bool = False) -> Aviso:
+              distancia: float | None = None, sospechoso: bool = False,
+              oferton: bool = False) -> Aviso:
     e = html.escape
     fuente = ETIQUETA_FUENTE.get(a.fuente, a.fuente)
-    cabecera = "🆕" if a.nuevo else "♻️"
-    h = [f"{cabecera} <b>{e(producto)}</b> · {e(fuente)}",
-         f"<b>{euros(a.precio)}</b> — {e(a.titulo[:180])}"]
-    t = [f"{cabecera} {producto} · {fuente}", f"{euros(a.precio)} — {a.titulo[:180]}"]
+    tipo = "nueva" if a.nuevo else "segunda mano"
+    if oferton:
+        h = ["🔥🔥 <b>OFERTÓN</b> 🔥🔥", f"🎮 <b>{e(producto)}</b> · {e(fuente)} · {tipo}"]
+        t = ["🔥🔥 OFERTÓN 🔥🔥", f"🎮 {producto} · {fuente} · {tipo}"]
+    else:
+        h = [f"🏷️ <b>{e(producto)}</b> · {e(fuente)} · {tipo}"]
+        t = [f"🏷️ {producto} · {fuente} · {tipo}"]
+    h.append(f"💶 <b>{euros(a.precio)}</b> — {e(a.titulo[:180])}")
+    t.append(f"💶 {euros(a.precio)} — {a.titulo[:180]}")
 
     if a.tienda and a.fuente != "wallapop":
         h.append(f"🏬 {e(a.tienda)}")
-        t.append(f"Tienda: {a.tienda}")
+        t.append(f"🏬 {a.tienda}")
     lugar = []
     if a.ciudad:
         lugar.append(f"📍 {a.ciudad}" + (f" ({distancia:.0f} km)" if distancia is not None else ""))
@@ -145,35 +152,24 @@ def formatear(a, producto: str, motivo: str, mediana: float | None = None, muest
         t.append(" · ".join(lugar))
     if a.estado:
         h.append(f"✨ Estado: {e(a.estado)}")
-        t.append(f"Estado: {a.estado}")
+        t.append(f"✨ Estado: {a.estado}")
     if a.precio_total and a.precio and a.precio_total > a.precio + 0.01:
         h.append(f"💳 Total con protección al comprador: {euros(a.precio_total)}")
-        t.append(f"Total con protección: {euros(a.precio_total)}")
+        t.append(f"💳 Total con protección: {euros(a.precio_total)}")
     if mediana and a.precio is not None:
         dif = (a.precio / mediana - 1) * 100
         linea = f"📊 Mediana de segunda mano: {euros(mediana)} ({dif:+.0f}%, {muestras} anuncios)"
         h.append(e(linea))
         t.append(linea)
-    h.append(f"✅ {e(motivo)}")
-    t.append(f"✅ {motivo}")
+    if motivo:
+        icono = "✅" if oferton else "ℹ️"
+        h.append(f"{icono} {e(motivo)}")
+        t.append(f"{icono} {motivo}")
     if sospechoso:
         aviso = "⚠️ Muy por debajo del mercado: puede ser estafa. Paga solo dentro de la plataforma."
         h.append(e(aviso))
         t.append(aviso)
-    h.append(f'<a href="{e(a.url, quote=True)}">Abrir el anuncio</a>')
-    t.append(a.url)
+    destino = a.tienda if a.fuente == "tienda" and a.tienda else fuente
+    h.append(f'👉 <a href="{e(a.url, quote=True)}"><b>Ver en {e(destino)}</b></a>')
+    t.append(f"👉 {a.url}")
     return Aviso(html="\n".join(h), texto="\n".join(t), imagen=a.imagen)
-
-
-def formatear_resumen(producto: str, fuente: str, candidatos: list, total: int) -> Aviso:
-    """Primer arranque: en vez de 30 avisos, uno con lo mejor que ya hay publicado."""
-    e = html.escape
-    nombre = ETIQUETA_FUENTE.get(fuente, fuente)
-    h = [f"📋 <b>{e(producto)}</b> · {e(nombre)}: {len(candidatos)} ofertas que ya cumplen tus filtros"]
-    t = [f"📋 {producto} · {nombre}: {len(candidatos)} ofertas que ya cumplen tus filtros"]
-    for a, _ in sorted(candidatos, key=lambda c: c[0].precio or 0)[:total]:
-        h.append(f'• <b>{euros(a.precio)}</b> <a href="{e(a.url, quote=True)}">{e(a.titulo[:70])}</a>')
-        t.append(f"• {euros(a.precio)} {a.titulo[:70]} {a.url}")
-    h.append("A partir de ahora te aviso solo de las nuevas.")
-    t.append("A partir de ahora te aviso solo de las nuevas.")
-    return Aviso(html="\n".join(h), texto="\n".join(t))

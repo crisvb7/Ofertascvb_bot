@@ -86,7 +86,7 @@ def main() -> int:
     estado = Estado(":memory:" if args.simular else ruta_bd)
     avisador = avisos.crear_avisador(cfg, solo_consola=args.simular)
     pausa = (1.0, 2.5) if args.una_vez else (2.0, 5.0)    # en GitHub Actions, cuanto más corto mejor
-    motor = Motor(cfg, estado, avisador, sin_calentamiento=args.simular, pausa=pausa)
+    motor = Motor(cfg, estado, avisador, pausa=(0, 0) if args.simular else pausa)
     log.info("Bot de ofertas %s (HTTP: %s) · productos: %s", __version__, MOTOR,
              ", ".join(p.nombre for p in cfg.productos))
     if MOTOR != "curl_cffi":

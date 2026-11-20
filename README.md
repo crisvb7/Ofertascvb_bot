@@ -5,20 +5,22 @@ PcComponentes, El Corte Inglés, PlayStation Direct, Carrefour, Game, AliExpress
 **fichas concretas de tiendas** (precio y stock). Te avisa por **Telegram** y/o **WhatsApp** cuando
 aparece una PS5 o una Xbox Series X a buen precio.
 
-**Cuándo avisa**
+**Cómo avisa**
 
-- Si el precio está por debajo de **tu máximo** (`config.yaml`).
-- O si un anuncio de segunda mano está un **20 % por debajo de la mediana** de lo que se está pidiendo
-  en Wallapop y Vinted en las últimas 2 semanas (el bot la calcula solo).
-- Si un anuncio del que ya te avisó **baja de precio** otros 10 € o más.
+Cada consola que encuentra te llega **en su propio mensaje, con foto y enlace**, de la más barata a la
+más cara:
+
+- **🔥 OFERTÓN**: por debajo de **tu máximo** (`config.yaml`), o un **20 % más barata que la mediana**
+  de lo que se pide en segunda mano en las últimas 2 semanas (el bot la calcula solo).
+- **🏷️ Normal**: el resto, hasta el **tope** de cada consola (lo que cuesta nueva). Te dice cuánto se pasa
+  de tu máximo. Si solo quieres ofertones, pon `avisos.todas: false`.
+- Si un anuncio del que ya te avisó **baja de precio** otros 10 € o más, te lo vuelve a mandar.
 - Si una tienda que vigilas **vuelve a tener stock** (útil para la Xbox Series X, que va escasa).
+- Como mucho 25 mensajes por pasada (`avisos.max_por_pasada`); si hay más, siguen en la siguiente.
 
 Descarta mandos, juegos, fundas, cajas vacías, "busco PS5", PS5 Pro, PS Portal, Series S, consolas
 averiadas, anuncios reservados y los de fuera de tu radio sin envío. Si algo está sospechosamente barato
 (menos de la mitad de la mediana) te lo marca como posible estafa.
-
-La primera vez que mira cada sitio no te manda 40 avisos: te manda **un resumen** con lo mejor que ya
-hay publicado, y a partir de ahí solo las novedades.
 
 ---
 
@@ -73,7 +75,8 @@ En el repo: **Settings → Secrets and variables → Actions → New repository 
    abre `.github/workflows/bot.yml` en GitHub (icono del lápiz), cambia `*/10 * * * *` por
    `3-59/10 * * * *` y pulsa **Commit changes**. Así la tarea queda a tu nombre (y además evita el minuto
    :00, cuando GitHub va más saturado).
-5. Listo: a partir de ahí se ejecuta solo cada 10 minutos. El primer aviso será el resumen inicial.
+5. Listo: a partir de ahí se ejecuta solo cada 10 minutos. La primera pasada te manda lo que ya hay
+   publicado (hasta 25 mensajes) y luego solo lo nuevo.
    Si en una hora no ves ejecuciones *scheduled* en la pestaña Actions, repasa el paso 4.
 
 Para cambiar precios o productos, edita `config.yaml` en GitHub (icono del lápiz) y guarda: la siguiente
@@ -90,8 +93,8 @@ ejecución ya lo usa.
   programada de este tipo es una zona gris. Lo peor que suele pasar es que desactiven Actions en ese repo.
 - GitHub pausa las tareas programadas de un repo público tras 60 días sin actividad; el
   propio workflow hace un commit de "latido" el día 1 de cada mes para evitarlo.
-- La "memoria" del bot (qué ha visto) se guarda en la caché de Actions. Si algún día se pierde, solo
-  notarás un nuevo mensaje de resumen.
+- La "memoria" del bot (qué ha visto) se guarda en la caché de Actions. Si algún día se pierde, te volverá
+  a mandar los anuncios que sigan publicados.
 
 ---
 

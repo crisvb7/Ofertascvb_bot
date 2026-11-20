@@ -17,6 +17,13 @@ mercado:
   descuento_minimo: 0.20   # avisa también si está un 20 % por debajo de la mediana
   bajada_minima_euros: 10  # vuelve a avisar de un anuncio ya avisado si baja al menos esto
 
+# Cómo te avisa: cada oferta en su propio mensaje (con foto y enlace), de la más barata a
+# la más cara. Las que están por debajo de tu máximo, o mucho más baratas que la mediana,
+# llegan marcadas como 🔥 OFERTÓN.
+avisos:
+  todas: true            # true = también las que pasan de tu máximo; false = solo ofertones
+  max_por_pasada: 25     # mensajes como mucho en cada pasada (si hay más, siguen en la próxima)
+
 # Cada cuánto se mira cada sitio (minutos). No lo bajes mucho o te bloquearán.
 # En GitHub Actions el bot no puede ir más rápido que el cron de .github/workflows/bot.yml.
 intervalos_min:
@@ -91,9 +98,10 @@ productos:
     busquedas: ["ps5", "playstation 5"]
     incluir: ['\bps\s?5\b', 'playstation\s?5', 'play\s?station\s?5', '\bplay\s?5\b']
     excluir: ['\bpro\b', '\bportal\b', '\bpsvr', '\bvr\s?2?\b', '\bedge\b', '\bpulse\b']
+    tope: 650      # nunca te manda nada más caro que esto (lo que cuesta nueva)
     segunda_mano:
       min: 150     # por debajo casi siempre es accesorio, juego o estafa
-      max: 420     # avísame siempre por debajo de esto
+      max: 420     # por debajo de esto = 🔥 OFERTÓN
     nuevo:
       min: 250     # quita juegos, mandos y cuotas "6,50 €/mes"
       max: 529
@@ -103,6 +111,7 @@ productos:
     busquedas: ["xbox series x"]
     incluir: ['series\s?x\b', '\bxsx\b']
     excluir: ['series\s?s\b', 'series\s?x\s?[|/-]\s?s\b', '\bone\s?[xs]\b', '\belite\b']
+    tope: 800      # nunca te manda nada más caro que esto (lo que cuesta nueva)
     segunda_mano:
       min: 200
       max: 420

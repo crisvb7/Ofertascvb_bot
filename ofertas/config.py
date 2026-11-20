@@ -23,6 +23,7 @@ class Producto:
     usado_max: float | None = None
     nuevo_min: float | None = None
     nuevo_max: float | None = None
+    tope: float | None = None           # por encima de esto no avisa nunca
 
     def coincide(self, a: Anuncio) -> bool:
         """¿El anuncio es de verdad esta consola (y no un mando, un juego, una funda...)?"""
@@ -61,6 +62,8 @@ class Config:
     muestras_minimas: int = 12
     descuento_minimo: float = 0.20
     bajada_minima: float = 10
+    avisar_todas: bool = True           # False = solo ofertones
+    max_por_pasada: int | None = 25     # mensajes como mucho por pasada
     intervalos: dict = field(default_factory=dict)
     fuentes: dict = field(default_factory=dict)
     feeds_chollometro: list[str] = field(default_factory=list)
@@ -115,6 +118,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
             excluir_descripcion=_regex(exc_desc + (p.get("excluir_descripcion") or [])),
             usado_min=usado.get("min"), usado_max=usado.get("max"),
             nuevo_min=nuevo.get("min"), nuevo_max=nuevo.get("max"),
+            tope=p.get("tope"),
         ))
     if not productos:
         raise ValueError("config.yaml no tiene ningún producto en 'productos'")
@@ -129,6 +133,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
 
     ubic = datos.get("ubicacion") or {}
     merc = datos.get("mercado") or {}
+    av = datos.get("avisos") or {}
     env = os.environ.get
     return Config(
         productos=productos,
@@ -141,6 +146,8 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
         muestras_minimas=int(merc.get("muestras_minimas", 12)),
         descuento_minimo=float(merc.get("descuento_minimo", 0.20)),
         bajada_minima=float(merc.get("bajada_minima_euros", 10)),
+        avisar_todas=bool(av.get("todas", True)),
+        max_por_pasada=av.get("max_por_pasada", 25) or None,
         intervalos={"wallapop": 5, "vinted": 10, "chollometro": 10, "tiendas": 30,
                     **(datos.get("intervalos_min") or {})},
         fuentes=datos.get("fuentes") or {},

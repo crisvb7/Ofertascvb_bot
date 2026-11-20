@@ -27,16 +27,17 @@ class Veredicto:
     mediana: float | None = None
     muestras: int = 0
     sospechoso: bool = False
+    oferton: bool = False
 
 
 class Motor:
     def __init__(self, cfg: Config, estado: Estado, avisador: avisos.Avisador,
-                 sin_calentamiento: bool = False, pausa: tuple[float, float] = (2.0, 5.0)):
+                 pausa: tuple[float, float] = (2.0, 5.0)):
         self.cfg = cfg
         self.estado = estado
         self.avisador = avisador
-        self.sin_calentamiento = sin_calentamiento
         self.pausa = pausa
+        self.pendientes: list[tuple[Anuncio, Veredicto, float | None, str]] = []
         self.sesion = sesion_navegador()
         self.vinted = Vinted(sesion_navegador(), cfg.dominio_vinted)
         # El ritmo de cada fuente se guarda en la BD: así sobrevive a reinicios y funciona
@@ -53,6 +54,7 @@ class Motor:
         `margen` (segundos) adelanta las fuentes a las que les falta poco: útil cuando el bot
         se lanza cada X minutos desde fuera y no puede esperar al momento exacto."""
         antes = self.avisos_enviados
+        self.pendientes = []
         for fuente in FUENTES:
             if not self.cfg.activa(fuente) or (fuente == "tiendas" and not self.cfg.tiendas):
                 continue
@@ -79,7 +81,26 @@ class Motor:
             self.estado.guardar(f"proxima:{fuente}", self.proxima[fuente])
             self.estado.guardar(f"castigo:{fuente}", self.castigo[fuente])
             self.estado.guardar(f"fallos:{fuente}", self.fallos[fuente])
+        self._enviar_pendientes()
         return self.avisos_enviados - antes
+
+    def _enviar_pendientes(self) -> None:
+        """Manda las ofertas de esta pasada una a una, de la más barata a la más cara."""
+        if not self.pendientes:
+            return
+        orden = sorted(self.pendientes, key=lambda p: p[0].precio)
+        tope = self.cfg.max_por_pasada
+        enviar, resto = (orden[:tope], orden[tope:]) if tope else (orden, [])
+        for i, (a, v, dist, producto) in enumerate(enviar):
+            aviso = avisos.formatear(a, producto, v.motivo, v.mediana, v.muestras, dist,
+                                     v.sospechoso, oferton=v.oferton)
+            if self._mandar(aviso):
+                self.estado.marcar_avisado(a.clave, a.precio)
+            if self.pausa[1] > 0 and i + 1 < len(enviar):
+                time.sleep(1.2)            # Telegram no quiere ráfagas
+        if resto:
+            log.info("%d ofertas más caras quedan para la próxima pasada", len(resto))
+        self.pendientes = []
 
     def _vigilar_salud(self, fuente: str, fallo: str | None) -> None:
         """Si una fuente lleva muchos fallos seguidos te lo dice (una vez), y cuando vuelve."""
@@ -137,11 +158,9 @@ class Motor:
 
     # --- lógica de ofertas --------------------------------------------------
     def procesar(self, anuncios: list[Anuncio], prod: Producto, fuente: str) -> None:
-        clave_cal = f"{fuente}:{prod.nombre}"
-        calentando = not self.sin_calentamiento and not self.estado.calentado(clave_cal)
+        """Filtra y evalúa; las ofertas se mandan al final de la pasada, ordenadas por precio."""
         vistos: set[str] = set()
-        candidatos: list[tuple[Anuncio, Veredicto, float | None]] = []
-
+        n_ofertas = 0
         for a in anuncios:
             if a.precio is None or a.reservado or not prod.coincide(a):
                 continue
@@ -162,37 +181,29 @@ class Motor:
 
             v = self.evaluar(a, prod, previo)
             if v.avisar:
-                candidatos.append((a, v, dist))
-
-        if calentando:
-            self.estado.marcar_calentado(clave_cal)
-            for a, _, _ in candidatos:
-                self.estado.marcar_avisado(a.clave, a.precio)
-            log.info("%s · %s: primera pasada, %d anuncios válidos, %d ya cumplen filtros",
-                     fuente, prod.nombre, len(vistos), len(candidatos))
-            if candidatos:
-                self._mandar(avisos.formatear_resumen(
-                    prod.nombre, fuente, [(a, v) for a, v, _ in candidatos], total=8))
-            return
-
-        for a, v, dist in candidatos:
-            aviso = avisos.formatear(a, prod.nombre, v.motivo, v.mediana, v.muestras, dist, v.sospechoso)
-            if self._mandar(aviso):
-                self.estado.marcar_avisado(a.clave, a.precio)
-        log.info("%s · %s: %d anuncios válidos, %d avisos", fuente, prod.nombre,
-                 len(vistos), len(candidatos))
+                self.pendientes.append((a, v, dist, prod.nombre))
+                n_ofertas += 1
+        log.info("%s · %s: %d anuncios válidos, %d para avisar", fuente, prod.nombre,
+                 len(vistos), n_ofertas)
 
     def evaluar(self, a: Anuncio, prod: Producto, previo: dict | None) -> Veredicto:
         _, pmax = prod.limites(a.nuevo)
+        if prod.tope is not None and a.precio > prod.tope:
+            return Veredicto(False)        # más caro que nueva: no interesa
         mediana, n = (None, 0) if a.nuevo else self.estado.mediana(prod.nombre, self.cfg.dias_mercado)
         fiable = mediana is not None and n >= self.cfg.muestras_minimas
 
-        motivo = ""
+        oferton = False
         if pmax is not None and a.precio <= pmax:
-            motivo = f"Por debajo de tu máximo ({euros(pmax)})"
+            oferton, motivo = True, f"Por debajo de tu máximo ({euros(pmax)})"
         elif fiable and a.precio <= mediana * (1 - self.cfg.descuento_minimo):
+            oferton = True
             motivo = f"Un {round((1 - a.precio / mediana) * 100)}% más barato que la mediana del mercado"
-        if not motivo:
+        elif pmax is not None:
+            motivo = f"{euros(a.precio - pmax)} por encima de tu máximo ({euros(pmax)})"
+        else:
+            motivo = ""
+        if not oferton and not self.cfg.avisar_todas:
             return Veredicto(False)
 
         avisado = previo.get("avisado_precio") if previo else None
@@ -202,7 +213,7 @@ class Motor:
             motivo = f"Ha bajado de {euros(avisado)} a {euros(a.precio)}. {motivo}"
 
         return Veredicto(True, motivo, mediana if fiable else None, n,
-                         sospechoso=bool(fiable and a.precio < mediana * 0.5))
+                         sospechoso=bool(fiable and a.precio < mediana * 0.5), oferton=oferton)
 
     def procesar_tienda(self, t, prod: Producto, info: dict) -> None:
         precio, en_stock = info.get("precio"), info.get("en_stock")
@@ -227,7 +238,7 @@ class Motor:
         self.estado.guardar_stock(t.url, en_stock, precio, avisado)
         log.info("%s · %s: %s, stock=%s", t.nombre, prod.nombre, euros(precio), en_stock)
         if motivo:
-            self._mandar(avisos.formatear(a, prod.nombre, motivo))
+            self._mandar(avisos.formatear(a, prod.nombre, motivo, oferton=buen_precio))
 
     def _mandar(self, aviso: avisos.Aviso) -> bool:
         ok = self.avisador.enviar(aviso)

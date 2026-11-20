@@ -10,10 +10,10 @@ OVIEDO = (43.3614, -5.8494)
 MADRID = (40.4168, -3.7038)
 
 
-def wp(id_, titulo, precio, lugar=OVIEDO, envio=False, desc="", ciudad="Oviedo"):
+def wp(id_, titulo, precio, lugar=OVIEDO, envio=False, desc="", ciudad="Oviedo", img=None):
     return Anuncio(fuente="wallapop", id=id_, titulo=titulo, precio=precio,
                    url=f"https://es.wallapop.com/item/{id_}", descripcion=desc,
-                   ciudad=ciudad, lat=lugar[0], lon=lugar[1], envio=envio)
+                   ciudad=ciudad, lat=lugar[0], lon=lugar[1], envio=envio, imagen=img)
 
 
 @pytest.mark.parametrize("titulo,esperado", [
@@ -59,71 +59,92 @@ def test_descripcion_excluye(cfg):
     assert p.coincide(wp("1", "PS5 Slim", 300, desc="Funciona perfecta, con su caja"))
 
 
-def test_calentamiento_y_despues_avisos(motor, avisador, cfg):
+def pasada(motor, anuncios, prod, fuente="wallapop"):
+    motor.pendientes = []
+    motor.procesar(anuncios, prod, fuente)
+    motor._enviar_pendientes()
+
+
+def test_una_a_una_ordenadas_con_ofertones(motor, avisador, cfg):
     ps5 = cfg.producto("PS5")
-    primera = [wp("a", "PS5 Slim", 360), wp("b", "PS5 Digital", 370), wp("c", "PS5", 450),
-               wp("d", "Mando PS5", 40), wp("e", "PS5 Pro", 300)]
-    motor.procesar(primera, ps5, "wallapop")
-    assert len(avisador.avisos) == 1                    # un único resumen
-    resumen = avisador.avisos[0].texto
-    assert "2 ofertas" in resumen and "360 €" in resumen and "450 €" not in resumen
+    primera = [wp("c", "PS5", 450), wp("a", "PS5 Slim", 360, img="https://cdn/a.jpg"), wp("x", "PS5 Slim", 700),
+               wp("d", "Mando PS5", 40), wp("e", "PS5 Pro", 300), wp("b", "PS5 Digital", 370)]
+    pasada(motor, primera, ps5)
+    textos = [a.texto for a in avisador.avisos]
+    assert len(textos) == 3                              # 700 € pasa del tope; mando y Pro fuera
+    assert ["360 €" in textos[0], "370 €" in textos[1], "450 €" in textos[2]] == [True] * 3
+    assert textos[0].startswith("🔥🔥 OFERTÓN") and textos[1].startswith("🔥🔥 OFERTÓN")
+    assert textos[2].startswith("🏷️ PS5") and "70 € por encima de tu máximo (380 €)" in textos[2]
+    assert avisador.avisos[0].imagen == "https://cdn/a.jpg"         # va con su foto
+    assert '<a href="https://es.wallapop.com/item/a"><b>Ver en Wallapop</b></a>' in avisador.avisos[0].html
 
-    # segunda pasada: los mismos más uno nuevo barato
-    motor.procesar(primera + [wp("f", "PS5 con lector", 340, desc="impecable")], ps5, "wallapop")
-    assert len(avisador.avisos) == 2
-    aviso = avisador.avisos[1]
-    assert "340 €" in aviso.texto and "Por debajo de tu máximo (380 €)" in aviso.texto
-    assert '<a href="https://es.wallapop.com/item/f">' in aviso.html
-
-    # y nada más si no cambia nada
-    motor.procesar(primera, ps5, "wallapop")
-    assert len(avisador.avisos) == 2
+    # segunda pasada: los mismos más uno nuevo barato → solo el nuevo
+    pasada(motor, primera + [wp("f", "PS5 con lector", 340, desc="impecable")], ps5)
+    assert len(avisador.avisos) == 4
+    assert "340 €" in avisador.avisos[3].texto and "OFERTÓN" in avisador.avisos[3].texto
+    pasada(motor, primera, ps5)
+    assert len(avisador.avisos) == 4
 
 
-def test_bajada_de_precio(motor, avisador, cfg, estado):
+def test_solo_ofertones_si_se_configura(motor, avisador, cfg):
+    cfg.avisar_todas = False
+    pasada(motor, [wp("a", "PS5", 360), wp("b", "PS5", 450)], cfg.producto("PS5"))
+    assert len(avisador.avisos) == 1 and "360 €" in avisador.avisos[0].texto
+
+
+def test_maximo_por_pasada_deja_el_resto_para_la_siguiente(motor, avisador, cfg):
+    cfg.max_por_pasada = 2
+    anuncios = [wp(str(i), "PS5", 300 + i * 10) for i in range(5)]
+    pasada(motor, anuncios, cfg.producto("PS5"))
+    assert [a.texto.count("300 €") + a.texto.count("310 €") for a in avisador.avisos] == [1, 1]
+    pasada(motor, anuncios, cfg.producto("PS5"))
+    assert len(avisador.avisos) == 4 and "320 €" in avisador.avisos[2].texto
+
+
+def test_bajada_de_precio(motor, avisador, cfg):
     ps5 = cfg.producto("PS5")
-    estado.marcar_calentado("wallapop:PS5")
-    motor.procesar([wp("a", "PS5", 375)], ps5, "wallapop")
-    motor.procesar([wp("a", "PS5", 370)], ps5, "wallapop")   # baja 5 €: no
-    motor.procesar([wp("a", "PS5", 360)], ps5, "wallapop")   # baja 15 €: sí
+    pasada(motor, [wp("a", "PS5", 375)], ps5)
+    pasada(motor, [wp("a", "PS5", 370)], ps5)   # baja 5 €: no
+    pasada(motor, [wp("a", "PS5", 360)], ps5)   # baja 15 €: sí
     assert len(avisador.avisos) == 2
     assert "Ha bajado de 375 € a 360 €" in avisador.avisos[1].texto
 
 
-def test_mediana_del_mercado(motor, avisador, cfg, estado):
+def test_mediana_del_mercado(motor, avisador, cfg):
     ps5 = cfg.producto("PS5")
-    estado.marcar_calentado("wallapop:PS5")
+    cfg.avisar_todas = False
     mercado = [wp(f"m{i}", "PS5 Slim", 500 + (i % 3) * 10) for i in range(15)]
-    motor.procesar(mercado, ps5, "wallapop")
+    pasada(motor, mercado, ps5)
     assert avisador.avisos == []                         # todos caros
-    motor.procesar([wp("x", "PS5 Slim", 390)], ps5, "wallapop")
+    pasada(motor, [wp("x", "PS5 Slim", 390)], ps5)
     assert len(avisador.avisos) == 1
     t = avisador.avisos[0].texto
-    assert "más barato que la mediana" in t and "Mediana de segunda mano: 510 €" in t
-    assert "estafa" not in t
-    motor.procesar([wp("y", "PS5 Slim", 200)], ps5, "wallapop")
+    assert "OFERTÓN" in t and "más barato que la mediana" in t
+    assert "Mediana de segunda mano: 510 €" in t and "estafa" not in t
+    pasada(motor, [wp("y", "PS5 Slim", 200)], ps5)
     assert "estafa" in avisador.avisos[-1].texto
 
 
-def test_distancia_y_envio(motor, avisador, cfg, estado):
+def test_distancia_y_envio(motor, avisador, cfg):
     ps5 = cfg.producto("PS5")
-    estado.marcar_calentado("wallapop:PS5")
-    motor.procesar([wp("lejos", "PS5", 300, MADRID, envio=False, ciudad="Madrid")], ps5, "wallapop")
+    pasada(motor, [wp("lejos", "PS5", 300, MADRID, envio=False, ciudad="Madrid")], ps5)
     assert avisador.avisos == []
-    motor.procesar([wp("lejos2", "PS5", 300, MADRID, envio=True, ciudad="Madrid")], ps5, "wallapop")
+    pasada(motor, [wp("lejos2", "PS5", 300, MADRID, envio=True, ciudad="Madrid")], ps5)
     assert len(avisador.avisos) == 1
     assert "Madrid (" in avisador.avisos[0].texto and "con envío" in avisador.avisos[0].texto
 
 
-def test_chollometro(motor, avisador, cfg, estado):
-    for p in cfg.productos:
-        estado.marcar_calentado(f"chollometro:{p.nombre}")
+def test_chollometro(motor, avisador, cfg):
     chollos = chollometro.parsear(RSS.encode())
+    motor.pendientes = []
     for p in cfg.productos:
         motor.procesar(chollos, p, "chollometro")
-    assert len(avisador.avisos) == 1                    # solo la PS5 a 499,99 €
-    t = avisador.avisos[0].texto
-    assert "499,99 €" in t and "MediaMarkt" in t and "Por debajo de tu máximo (529 €)" in t
+    motor._enviar_pendientes()
+    textos = [a.texto for a in avisador.avisos]
+    assert len(textos) == 1                    # PS5 a 499,99 €; la Xbox de 1.049 € pasa del tope
+    assert "OFERTÓN" in textos[0] and "499,99 €" in textos[0] and "MediaMarkt" in textos[0]
+    assert "Por debajo de tu máximo (529 €)" in textos[0] and "Ver en Chollometro" in avisador.avisos[0].html
+    assert avisador.avisos[0].imagen == "https://static.chollometro.com/a.jpg"
 
 
 def test_tienda_precio_y_stock(motor, avisador, cfg):
@@ -156,7 +177,7 @@ def test_ciclo_completo_con_fuentes_simuladas(motor, avisador, monkeypatch):
     n = motor.ciclo(forzar=True)
     assert ("wallapop", "ps5", 150) in llamadas and ("wallapop", "xbox series x", 200) in llamadas
     assert ("vinted", "playstation 5") in llamadas
-    assert n == 2                                        # dos resúmenes de primera pasada
+    assert n == 3                                        # 3 consolas (ps5, playstation 5, xbox)
     # ahora no le toca a nadie
     assert motor.ciclo() == 0
 
