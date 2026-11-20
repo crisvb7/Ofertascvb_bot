@@ -40,6 +40,9 @@ intervalos_min:
   vinted: 10
   cex: 30
   cashconverters: 30
+  carrefour: 15
+  game: 15
+  elcorteingles: 15
   chollometro: 10
   tiendas: 30
 
@@ -48,6 +51,9 @@ fuentes:
   vinted: true
   cex: true            # tiendas CeX (segunda mano con garantía; dice si hay en Oviedo/Gijón)
   cashconverters: true # Cash Converters (segunda mano con garantía)
+  carrefour: true      # tiendas: Carrefour (incluye su marketplace)
+  game: true           # tiendas: GAME (nuevas y seminuevas; descarta las agotadas)
+  elcorteingles: true  # tiendas: El Corte Inglés (descarta las agotadas)
   chollometro: true    # chollos de tiendas oficiales (Amazon, MediaMarkt, PcComponentes...)
   tiendas: true        # fichas concretas de la lista "tiendas" de abajo
 

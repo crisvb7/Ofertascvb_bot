@@ -94,8 +94,6 @@ def main() -> int:
         log.warning("curl_cffi no está instalado: Vinted y algunas tiendas bloquean más")
 
     if args.simular:
-        from ofertas import sonda_tiendas
-        sonda_tiendas.formatos4()             # TEMPORAL
         n = motor.ciclo(forzar=True)
         log.info("Simulación terminada: %d avisos (no se ha enviado nada)", n)
         return 0

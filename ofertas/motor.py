@@ -9,14 +9,23 @@ from dataclasses import dataclass
 from . import avisos
 from .config import Config, Producto
 from .estado import Estado
-from .fuentes import cashconverters, cex, chollometro, tiendas, wallapop
+from .fuentes import cashconverters, carrefour, cex, chollometro, elcorteingles, game, tiendas, wallapop
 from .fuentes.vinted import Vinted
 from .modelos import Anuncio
 from .red import ERRORES_RED, Bloqueado, sesion_navegador
 from .utiles import distancia_km, euros
 
 log = logging.getLogger(__name__)
-FUENTES = ("wallapop", "vinted", "cex", "cashconverters", "chollometro", "tiendas")
+FUENTES = ("wallapop", "vinted", "cex", "cashconverters", "carrefour", "game", "elcorteingles",
+           "chollometro", "tiendas")
+# fuentes que solo necesitan (sesión, búsqueda); True = buscar "consola <producto>" una vez
+SIMPLES = {
+    "cex": (cex, False),
+    "cashconverters": (cashconverters, False),
+    "carrefour": (carrefour, True),
+    "game": (game, True),
+    "elcorteingles": (elcorteingles, True),
+}
 FALLOS_PARA_AVISAR = 6
 
 
@@ -64,7 +73,8 @@ class Motor:
                 continue
             fallo = None
             try:
-                getattr(self, f"_ciclo_{fuente}")()
+                metodo = getattr(self, f"_ciclo_{fuente}", None)
+                metodo() if metodo else self._ciclo_simple(fuente)
                 self.castigo[fuente] = 1
             except Bloqueado as e:
                 self.castigo[fuente] = min(self.castigo[fuente] * 2, 12)
@@ -203,21 +213,15 @@ class Motor:
                 self._dormir()
             self.procesar(encontrados, prod, "vinted")
 
-    def _ciclo_cex(self) -> None:
+    def _ciclo_simple(self, fuente: str) -> None:
+        modulo, de_tienda = SIMPLES[fuente]
         for prod in self.cfg.productos:
+            consultas = [f"consola {prod.busquedas[0]}"] if de_tienda else prod.busquedas
             encontrados: list[Anuncio] = []
-            for q in prod.busquedas:
-                encontrados += cex.buscar(self.sesion, q)
+            for q in consultas:
+                encontrados += modulo.buscar(self.sesion, q)
                 self._dormir()
-            self.procesar(encontrados, prod, "cex")
-
-    def _ciclo_cashconverters(self) -> None:
-        for prod in self.cfg.productos:
-            encontrados: list[Anuncio] = []
-            for q in prod.busquedas:
-                encontrados += cashconverters.buscar(self.sesion, q)
-                self._dormir()
-            self.procesar(encontrados, prod, "cashconverters")
+            self.procesar(encontrados, prod, fuente)
 
     def _ciclo_chollometro(self) -> None:
         chollos: list[Anuncio] = []

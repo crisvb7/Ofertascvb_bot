@@ -8,7 +8,7 @@ import logging
 
 from . import avisos
 from .config import Config, Producto
-from .fuentes import cashconverters, cex, chollometro, tiendas, wallapop
+from .fuentes import chollometro, tiendas, wallapop
 from .fuentes.vinted import Vinted
 from .modelos import Anuncio
 from .red import ERRORES_RED, MOTOR, Bloqueado, sesion_navegador
@@ -95,12 +95,14 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
                 lineas.append(_error("Vinted", e))
                 break
 
-    for nombre, clave, funcion in (("CeX", "cex", cex.buscar), ("Cash Converters", "cashconverters", cashconverters.buscar)):
+    from .motor import SIMPLES
+    for clave, (modulo, de_tienda) in SIMPLES.items():
         if not cfg.activa(clave):
             continue
+        nombre = avisos.ETIQUETA_FUENTE.get(clave, clave)
         for prod in cfg.productos:
             try:
-                res = funcion(sesion, prod.busquedas[0])
+                res = modulo.buscar(sesion, f"consola {prod.busquedas[0]}" if de_tienda else prod.busquedas[0])
                 lineas.append(_linea(nombre, prod, res))
             except Exception as e:
                 lineas.append(_error(nombre, e))

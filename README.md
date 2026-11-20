@@ -1,8 +1,8 @@
 # Bot de ofertas de consolas 🎮
 
-Vigila **Wallapop**, **Vinted**, **CeX**, **Cash Converters**, **Chollometro** (chollos de tiendas
-oficiales: Amazon, MediaMarkt, PcComponentes, El Corte Inglés, PlayStation Direct, Carrefour, Game,
-AliExpress…) y, si quieres, **fichas concretas de tiendas** (precio y stock). Te avisa por **Telegram** y/o **WhatsApp** cuando
+Vigila **Wallapop**, **Vinted**, **CeX**, **Cash Converters**, las tiendas **Carrefour**, **GAME** y
+**El Corte Inglés** (buscando directamente en ellas), **Chollometro** (chollos de cualquier tienda: Amazon,
+MediaMarkt, PcComponentes…) y, si quieres, **fichas concretas de tiendas** (precio y stock). Te avisa por **Telegram** y/o **WhatsApp** cuando
 aparece una PS5 o una Xbox Series X a buen precio.
 
 **Cómo avisa**
@@ -87,9 +87,12 @@ ejecución ya lo usa.
 - **Ritmo**: cada 10 minutos como mucho, y GitHub a veces retrasa las ejecuciones programadas unos minutos
   en horas de mucha carga.
 - **Plataformas** (probadas desde los servidores de GitHub):
-  - ✅ Wallapop, Vinted (leyendo su página de búsqueda), CeX, Cash Converters y Chollometro.
-  - ❌ Milanuncios, eBay (web), todocoleccion y Back Market bloquean a GitHub con un antibots; funcionarían
-    desde una IP de casa. rebuy carga los productos con JavaScript. Facebook Marketplace exige iniciar sesión.
+  - ✅ Wallapop, Vinted (leyendo su página de búsqueda), CeX, Cash Converters, Carrefour, GAME,
+    El Corte Inglés y Chollometro.
+  - ❌ Milanuncios, eBay (web), todocoleccion, Back Market, Amazon, MediaMarkt, PcComponentes, Fnac y
+    Worten bloquean a GitHub con un antibots (funcionarían desde una IP de casa; sus chollos siguen llegando
+    por Chollometro). rebuy y xtralife cargan los productos con JavaScript. Toys"R"Us bloquea por país.
+    PlayStation Direct no vende en España. Facebook Marketplace exige iniciar sesión.
   - eBay se podría añadir con su API oficial (gratis, pide crear una cuenta de desarrollador).
   - Si alguna deja de responder, el bot te avisa por Telegram tras varios fallos seguidos.
 - **Condiciones de GitHub**: Actions está pensado para tareas de desarrollo de software; usarlo como tarea

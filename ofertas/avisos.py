@@ -23,6 +23,9 @@ ETIQUETA_FUENTE = {
     "chollometro": "Chollometro",
     "cex": "CeX",
     "cashconverters": "Cash Converters",
+    "carrefour": "Carrefour",
+    "game": "GAME",
+    "elcorteingles": "El Corte Inglés",
     "tienda": "Tienda",
 }
 
@@ -323,7 +326,7 @@ def formatear(a, producto: str, motivo: str, mediana: float | None = None, muest
     h.append(f"💶 <b>{euros(a.precio)}</b> — {e(a.titulo[:150])}")
     t.append(f"💶 {euros(a.precio)} — {a.titulo[:150]}")
 
-    if a.tienda and a.fuente != "wallapop":
+    if a.tienda and a.fuente in ("chollometro", "tienda"):
         h.append(f"🏬 {e(a.tienda)}")
         t.append(f"🏬 {a.tienda}")
     lugar = []

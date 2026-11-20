@@ -47,7 +47,8 @@ def cfg(monkeypatch):
     c = config.cargar(RAIZ / "config.yaml")
     # Límites fijos para los tests: así puedes cambiar los precios de config.yaml sin romperlos.
     c.fuentes = {"wallapop": True, "vinted": True, "chollometro": True, "tiendas": True,
-                 "cex": False, "cashconverters": False}
+                 "cex": False, "cashconverters": False, "carrefour": False, "game": False,
+                 "elcorteingles": False}
     c.avisar_todas, c.max_por_pasada = True, 25
     limites = {"PS5": (150, 380, 250, 529, 650), "Xbox Series X": (200, 450, 300, 699, 800)}
     for p in c.productos:
