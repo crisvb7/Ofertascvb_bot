@@ -8,6 +8,7 @@ Uso:
   python bot.py --simular       # una pasada mostrando en pantalla lo que avisaría, sin enviar
   python bot.py --una-vez       # una pasada y termina (cron, GitHub Actions)
   python bot.py --mercado       # precios de segunda mano que ha ido viendo
+  python bot.py --diagnostico   # comprueba cada plataforma y te manda un informe
 """
 from __future__ import annotations
 
@@ -39,6 +40,8 @@ def main() -> int:
     ap.add_argument("--prueba", action="store_true", help="enviar un aviso de prueba")
     ap.add_argument("--chat-id", action="store_true", help="mostrar los chats que han escrito al bot")
     ap.add_argument("--mercado", action="store_true", help="resumen de precios vistos")
+    ap.add_argument("--diagnostico", action="store_true",
+                    help="comprueba cada plataforma y manda un informe por Telegram")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -65,6 +68,11 @@ def main() -> int:
             texto="✅ Bot de ofertas: los avisos llegan bien."))
         print("Enviado" if ok else "No se pudo enviar (mira el error de arriba)")
         return 0 if ok else 1
+
+    if args.diagnostico:
+        from ofertas import diagnostico
+        lineas = diagnostico.ejecutar(cfg, avisos.crear_avisador(cfg))
+        return 0 if not any(linea.startswith("❌") for linea in lineas) else 1
 
     if args.mercado:
         filas = Estado(ruta_bd).resumen_mercado(cfg.dias_mercado)

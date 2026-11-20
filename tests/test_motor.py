@@ -219,3 +219,31 @@ def test_avisa_si_una_fuente_falla_mucho_y_cuando_vuelve(motor, avisador, monkey
     estado["roto"] = False
     motor.ciclo(forzar=True)
     assert "vuelve a funcionar" in avisador.avisos[-1].texto
+
+
+def test_diagnostico(cfg, avisador, monkeypatch):
+    from ofertas import diagnostico as d
+    from ofertas.red import Bloqueado
+
+    def wallapop_falso(sesion, q, lat, lon, pmin):
+        if "xbox" in q:
+            return [wp("x1", "Xbox Series X 1TB", 420), wp("x2", "Mando Xbox Series X", 45)]
+        return [wp("p1", "PS5 Slim", 360), wp("p2", "PS5 Slim lector", 330), wp("p3", "Funda PS5", 200)]
+
+    class VintedBloqueado:
+        def __init__(self, *a):
+            pass
+
+        def buscar(self, q, pmin):
+            raise Bloqueado("Vinted respondió 403")
+
+    monkeypatch.setattr(d.wallapop, "buscar", wallapop_falso)
+    monkeypatch.setattr(d, "Vinted", VintedBloqueado)
+    monkeypatch.setattr(d.chollometro, "leer", lambda s, url: chollometro.parsear(RSS.encode()))
+    lineas = d.ejecutar(cfg, avisador)
+    texto = avisador.avisos[0].texto
+    assert "Wallapop · PS5: 3 anuncios recibidos, 2 válidos, el más barato 330 € (tu máximo: 380 €)" in texto
+    assert "Wallapop · Xbox Series X: 2 anuncios recibidos, 1 válidos, el más barato 420 €" in texto
+    assert "❌ Vinted: me bloquea (Vinted respondió 403)" in texto
+    assert "Chollometro: 4 chollos nuevos en el feed; de consolas → PS5: 1, Xbox Series X: 1" in texto
+    assert len(lineas) >= 5

@@ -66,8 +66,15 @@ En el repo: **Settings → Secrets and variables → Actions → New repository 
 
 1. Pestaña **Actions** → si lo pide, *I understand my workflows, go ahead and enable them*.
 2. **Bot de ofertas → Run workflow → acción `prueba`** → te tiene que llegar un mensaje a Telegram.
-3. Opcional: **Run workflow → `simular`** y mira el log para ver qué encontraría.
-4. Listo: a partir de ahí se ejecuta solo cada 10 minutos. El primer aviso será el resumen inicial.
+3. **Run workflow → `diagnostico`** → te llega por Telegram un informe con lo que ve en cada plataforma
+   (anuncios recibidos, válidos y el más barato) o qué plataforma falla.
+4. **Muy importante**: GitHub solo lanza las tareas programadas si **la última persona que editó la línea
+   `cron`** tiene permiso de escritura en el repo. Si los archivos los subió otra persona o una app,
+   abre `.github/workflows/bot.yml` en GitHub (icono del lápiz), cambia `*/10 * * * *` por
+   `3-59/10 * * * *` y pulsa **Commit changes**. Así la tarea queda a tu nombre (y además evita el minuto
+   :00, cuando GitHub va más saturado).
+5. Listo: a partir de ahí se ejecuta solo cada 10 minutos. El primer aviso será el resumen inicial.
+   Si en una hora no ves ejecuciones *scheduled* en la pestaña Actions, repasa el paso 4.
 
 Para cambiar precios o productos, edita `config.yaml` en GitHub (icono del lápiz) y guarda: la siguiente
 ejecución ya lo usa.
@@ -81,8 +88,8 @@ ejecución ya lo usa.
   Wallapop y Chollometro deberían ir bien.
 - **Condiciones de GitHub**: Actions está pensado para tareas de desarrollo de software; usarlo como tarea
   programada de este tipo es una zona gris. Lo peor que suele pasar es que desactiven Actions en ese repo.
-- GitHub pausa las tareas programadas de un repo público tras 60 días sin actividad; el workflow
-  `mantener-activo` hace un commit al mes para evitarlo.
+- GitHub pausa las tareas programadas de un repo público tras 60 días sin actividad; el
+  propio workflow hace un commit de "latido" el día 1 de cada mes para evitarlo.
 - La "memoria" del bot (qué ha visto) se guarda en la caché de Actions. Si algún día se pierde, solo
   notarás un nuevo mensaje de resumen.
 

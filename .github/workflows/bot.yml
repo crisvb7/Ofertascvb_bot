@@ -2,20 +2,24 @@ name: Bot de ofertas
 
 on:
   schedule:
-    # Cada 10 minutos (repositorio PÚBLICO: minutos de Actions gratis e ilimitados).
-    # Si tu repositorio es PRIVADO, cámbialo a "*/30 * * * *" para no pasar de los
-    # 2.000 minutos gratis al mes.
+    # IMPORTANTE: GitHub solo ejecuta las tareas programadas si la última persona que tocó
+    # estas líneas "cron" tiene permiso de escritura en el repo. Edítalas tú desde GitHub.
+    #
+    # Cada 10 minutos (repo PÚBLICO: minutos gratis e ilimitados).
+    # Si el repo es PRIVADO, usa "*/30 * * * *" para no pasar de 2.000 minutos al mes.
     - cron: "*/10 * * * *"
+    # Día 1 de cada mes: commit de "latido" para que GitHub no pause el bot por inactividad.
+    - cron: "23 5 1 * *"
   workflow_dispatch:
     inputs:
       accion:
         description: "Qué hacer"
         type: choice
-        options: [pasada, prueba, simular]
+        options: [pasada, prueba, diagnostico, simular]
         default: pasada
 
 concurrency:
-  group: bot-ofertas
+  group: bot-ofertas-${{ github.event.schedule == '23 5 1 * *' && 'latido' || 'bot' }}
   cancel-in-progress: false
 
 permissions:
@@ -23,6 +27,7 @@ permissions:
 
 jobs:
   bot:
+    if: github.event.schedule != '23 5 1 * *'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
@@ -56,9 +61,10 @@ jobs:
         run: |
           mkdir -p datos
           case "$ACCION" in
-            prueba)  python bot.py --prueba ;;
-            simular) python bot.py --simular ;;
-            *)       python bot.py --una-vez ;;
+            prueba)      python bot.py --prueba ;;
+            diagnostico) python bot.py --diagnostico ;;
+            simular)     python bot.py --simular ;;
+            *)           python bot.py --una-vez ;;
           esac
 
       - name: Guardar memoria del bot
@@ -67,3 +73,19 @@ jobs:
         with:
           path: datos
           key: estado-${{ github.run_id }}-${{ github.run_attempt }}
+
+  latido:
+    if: github.event.schedule == '23 5 1 * *'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Commit de latido
+        run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .ultimo-latido
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ultimo-latido
+          git commit -m "Latido mensual para que GitHub no pause el bot"
+          git push
