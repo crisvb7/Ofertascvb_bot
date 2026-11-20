@@ -31,7 +31,7 @@ avisos:
 # El bot crea los temas solo; los mensajes del sistema siguen yendo a tu chat privado.
 telegram:
   grupo_id: "-1004319446143"   # «Ofertas PS5 y XBOX»
-  temas: {}              # opcional: ids de temas ya creados, p. ej. {oferton: 3, buen_precio: 5, resto: 7}
+  temas: {oferton: 3, buen_precio: 7, resto: 12}   # ids de los temas que creó el bot
 
 # Cada cuánto se mira cada sitio (minutos). No lo bajes mucho o te bloquearán.
 # En GitHub Actions el bot no puede ir más rápido que el cron de .github/workflows/bot.yml.
