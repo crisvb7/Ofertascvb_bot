@@ -39,6 +39,9 @@ class AvisadorFalso:
     def indice(self, categoria, html):
         self.indices[categoria] = html
 
+    def preparar_temas(self):
+        self.temas_preparados = True
+
 
 @pytest.fixture
 def cfg(monkeypatch):

@@ -41,7 +41,24 @@ class Estado:
         self.db = sqlite3.connect(ruta)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(_ESQUEMA)
+        self._migrar_secciones()
         self.purgar()
+
+    def _migrar_secciones(self) -> None:
+        """v1 tenía 3 categorías; ahora hay secciones nueva_* / usada_*."""
+        if self.leer("migracion:secciones"):
+            return
+        viejas = ("oferton", "buen_precio", "resto")
+        self.db.execute(
+            "UPDATE mensajes SET categoria = (CASE WHEN fuente IN "
+            "('chollometro','carrefour','game','elcorteingles','tienda') THEN 'nueva_' ELSE 'usada_' END) "
+            "|| categoria WHERE categoria IN ('oferton','buen_precio','resto')")
+        self.db.execute("UPDATE mensajes SET categoria='nueva_buen_precio' WHERE categoria='nueva_resto'")
+        for (k,) in self.db.execute("SELECT k FROM meta").fetchall():
+            partes = k.split(":")
+            if len(partes) == 3 and partes[0] in ("tema", "indice", "indice_hash") and partes[2] in viejas:
+                self.db.execute("UPDATE meta SET k=? WHERE k=?", (f"{partes[0]}:{partes[1]}:usada_{partes[2]}", k))
+        self.guardar("migracion:secciones", "1")
 
     # --- anuncios -------------------------------------------------------
     def registrar(self, a: Anuncio, producto: str) -> dict | None:

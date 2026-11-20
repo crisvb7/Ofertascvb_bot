@@ -29,12 +29,23 @@ ETIQUETA_FUENTE = {
     "tienda": "Tienda",
 }
 
-# categoría -> (nombre del tema, color del icono permitido por Telegram)
+# sección del grupo -> (nombre del tema, color del icono permitido por Telegram)
+# Primero el tipo de consola (nueva / segunda mano) y luego la categoría de precio.
 CATEGORIAS = {
-    "oferton": ("🔥 Ofertones", 16478047),
-    "buen_precio": ("💰 Buen precio", 16766590),
-    "resto": ("🏷️ Resto", 7322096),
+    "nueva_oferton": ("🆕 Nuevas · 🔥 Ofertones", 13338331),
+    "nueva_buen_precio": ("🆕 Nuevas · 💰 Buen precio", 9367192),
+    "usada_oferton": ("♻️ Segunda mano · 🔥 Ofertones", 16478047),
+    "usada_buen_precio": ("♻️ Segunda mano · 💰 Buen precio", 16766590),
+    "usada_resto": ("♻️ Segunda mano · 🏷️ Resto", 7322096),
 }
+
+
+def seccion(nuevo: bool, categoria: str) -> str:
+    """'oferton' + nueva -> 'nueva_oferton'. Las nuevas no tienen 'resto' (pasan del tope)."""
+    clave = f"{'nueva' if nuevo else 'usada'}_{categoria}"
+    if clave in CATEGORIAS:
+        return clave
+    return "nueva_buen_precio" if nuevo else "usada_resto"
 
 
 @dataclass
@@ -116,6 +127,15 @@ class Telegram:
             return False
         log.warning("Telegram no ha editado el mensaje: %s", j.get("description"))
         return None
+
+    def renombrar_tema(self, chat_id: str, thread_id: int, nombre: str) -> bool:
+        j = self._llamar("editForumTopic", {"chat_id": chat_id, "message_thread_id": int(thread_id),
+                                            "name": nombre}, chat_id)
+        desc = (j.get("description") or "").lower()
+        if j.get("ok") or "not modified" in desc:
+            return True
+        log.warning("No he podido renombrar el tema %s: %s", thread_id, j.get("description"))
+        return False
 
     def crear_tema(self, chat_id: str, nombre: str, color: int) -> int | None:
         j = self._llamar("createForumTopic", {"chat_id": chat_id, "name": nombre, "icon_color": color}, chat_id)
@@ -242,12 +262,24 @@ class Avisador:
         guardado = self.estado.leer(clave) if self.estado else None
         if guardado:
             return int(guardado)
-        nombre, color = CATEGORIAS.get(categoria, CATEGORIAS["resto"])
+        nombre, color = CATEGORIAS.get(categoria, CATEGORIAS["usada_resto"])
         tid = self.telegram.crear_tema(self.grupo_id, nombre, color)
         if tid and self.estado:
             self.estado.guardar(clave, tid)
+            self.estado.guardar(f"tema_nombre:{self.grupo_id}:{categoria}", nombre)
             log.info("Tema creado en el grupo: %s (id %s)", nombre, tid)
         return tid
+
+    def preparar_temas(self) -> None:
+        """Crea los temas que falten y pone a cada uno su nombre actual (una vez)."""
+        if not (self.con_grupo and self.estado):
+            return
+        for sec, (nombre, _) in CATEGORIAS.items():
+            tid = self.tema(sec)
+            clave = f"tema_nombre:{self.grupo_id}:{sec}"
+            if tid and self.estado.leer(clave) != nombre:
+                if self.telegram.renombrar_tema(self.grupo_id, tid, nombre):
+                    self.estado.guardar(clave, nombre)
 
     def indice(self, categoria: str, html_indice: str) -> None:
         """Mensaje fijado en cada tema con las ofertas de los últimos días (lo más nuevo arriba)."""
@@ -394,7 +426,7 @@ def construir_indice(categoria: str, filas: list[dict], dias: float, max_disponi
                      max_vendidas: int = 8) -> str:
     """Índice del tema: disponibles (lo más nuevo arriba) y las que ya no están."""
     e = html.escape
-    nombre = CATEGORIAS.get(categoria, CATEGORIAS["resto"])[0]
+    nombre = CATEGORIAS.get(categoria, CATEGORIAS["usada_resto"])[0]
     cab = [f"📌 <b>{nombre}</b> · lo más nuevo arriba",
            f"<i>Actualizado {hora_local(time.time())} · últimos {dias:g} días</i>", ""]
     disponibles = [f for f in filas if f["estado"] != "vendida"]

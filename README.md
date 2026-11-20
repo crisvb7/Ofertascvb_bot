@@ -106,10 +106,15 @@ ejecución ya lo usa.
 
 ## Apartados en un grupo de Telegram (opcional, recomendado)
 
-En vez de recibirlo todo en el chat del bot, puedes tener un grupo con un **tema por apartado**:
+En vez de recibirlo todo en el chat del bot, puedes tener un grupo con un **tema por apartado**,
+separando primero **consolas nuevas** y **de segunda mano** y después por precio:
 
-- **🔥 Ofertones** · **💰 Buen precio** (por debajo de la mediana del mercado) · **🏷️ Resto**
-- Cada oferta va a su tema, con foto y enlace.
+- 🆕 **Nuevas · 🔥 Ofertones** (por debajo de tu máximo de consola nueva) · 🆕 **Nuevas · 💰 Buen precio**
+  (hasta lo que cuesta nueva)
+- ♻️ **Segunda mano · 🔥 Ofertones** · ♻️ **Segunda mano · 💰 Buen precio** (por debajo de la mediana del
+  mercado) · ♻️ **Segunda mano · 🏷️ Resto**
+- Cada oferta va a su tema, con foto y enlace. Telegram no deja meter temas dentro de otros temas, por eso
+  el tipo va delante del nombre; puedes fijar arriba los que más te interesen (mantén pulsado → Fijar).
 - Cada ~25 min el bot revisa los anuncios de Wallapop de los últimos 3 días: si se venden o se retiran,
   el mensaje se marca **❌ YA NO ESTÁ DISPONIBLE**; si cambian de precio, lo indica.
 - Arriba de cada tema hay un **📌 índice fijado** con lo disponible, **lo más nuevo arriba**, y lo que

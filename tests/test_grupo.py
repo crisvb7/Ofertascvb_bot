@@ -6,6 +6,7 @@ import pytest
 from conftest import AvisadorFalso
 from ofertas import avisos
 from ofertas.avisos import Aviso, Avisador, Telegram
+from ofertas.modelos import Anuncio
 from ofertas.utiles import hora_local
 
 from test_motor import pasada, wp
@@ -25,7 +26,7 @@ def test_categorias(grupo, cfg):
     pasada(motor, mercado, ps5)
     av.avisos.clear(); av.categorias.clear()
     pasada(motor, [wp("o", "PS5", 370), wp("b", "PS5", 470), wp("r", "PS5", 600)], ps5)
-    assert av.categorias == ["oferton", "buen_precio", "resto"]
+    assert av.categorias == ["usada_oferton", "usada_buen_precio", "usada_resto"]
     assert av.avisos[0].texto.startswith("🔥🔥 OFERTÓN")
     assert av.avisos[1].texto.startswith("💰 BUEN PRECIO")
     assert av.avisos[2].texto.startswith("🏷️ PS5")
@@ -61,8 +62,9 @@ def test_indice_lo_mas_nuevo_arriba_y_vendidas_abajo(grupo, cfg, estado):
     pasada(motor, [viejo, nuevo, medio], cfg.producto("PS5"))
     estado.actualizar_mensaje("wallapop:x", estado="vendida")
     motor._actualizar_indices()
-    idx = av.indices["oferton"]
-    assert idx.startswith("📌 <b>🔥 Ofertones</b> · lo más nuevo arriba")
+    idx = av.indices["usada_oferton"]
+    assert idx.startswith("📌 <b>♻️ Segunda mano · 🔥 Ofertones</b> · lo más nuevo arriba")
+    assert set(av.indices) == set(avisos.CATEGORIAS)                 # un índice por sección
     assert idx.index("PS5 nueva") < idx.index("PS5 vieja")          # lo más nuevo arriba
     assert "❌ <b>Ya no disponibles</b>" in idx and "<s>300 € · PS5 vendida</s>" in idx
 
@@ -158,11 +160,52 @@ def test_avisador_crea_temas_y_fija_indice(monkeypatch, estado):
             {"ok": True, "result": {"message_id": 2}}],            # editar índice
            monkeypatch)
     av = Avisador([], telegram=t, grupo_id="-100123", estado=estado)
-    ref = av.enviar_oferta(Aviso("<b>PS5</b>", "PS5"), "oferton")
-    assert ref["message_id"] == 1 and estado.leer("tema:-100123:oferton") == "11"
-    av.indice("oferton", "📌 índice v1")
-    av.indice("oferton", "📌 índice v1")                         # igual: no hace nada
-    av.indice("oferton", "📌 índice v2")
+    ref = av.enviar_oferta(Aviso("<b>PS5</b>", "PS5"), "usada_oferton")
+    assert ref["message_id"] == 1 and estado.leer("tema:-100123:usada_oferton") == "11"
+    av.indice("usada_oferton", "📌 índice v1")
+    av.indice("usada_oferton", "📌 índice v1")                   # igual: no hace nada
+    av.indice("usada_oferton", "📌 índice v2")
     metodos = [m for m, _ in t.s.llamadas]
     assert metodos == ["createForumTopic", "sendMessage", "sendMessage", "pinChatMessage", "editMessageText"]
     assert t.s.llamadas[2][1]["message_thread_id"] == 11
+
+
+def test_nuevas_y_usadas_van_a_secciones_distintas(grupo, cfg):
+    motor, av = grupo
+    ps5 = cfg.producto("PS5")
+    nueva = Anuncio(fuente="game", id="g1", titulo="Consola PlayStation 5", precio=499, nuevo=True,
+                    url="https://www.game.es/x/g1", tienda="GAME")
+    pasada(motor, [nueva, wp("u", "PS5 Slim", 350)], ps5)
+    assert sorted(av.categorias) == ["nueva_oferton", "usada_oferton"]
+    assert avisos.seccion(True, "resto") == "nueva_buen_precio"
+
+
+def test_migracion_de_categorias_antiguas(tmp_path):
+    from ofertas.estado import Estado
+    ruta = str(tmp_path / "v1.db")
+    e = Estado(ruta)
+    e.db.execute("DELETE FROM meta WHERE k='migracion:secciones'")
+    e.db.execute("INSERT INTO mensajes (clave, fuente, categoria, enviado) VALUES ('wallapop:1','wallapop','oferton',?)", (time.time(),))
+    e.db.execute("INSERT INTO mensajes (clave, fuente, categoria, enviado) VALUES ('game:1','game','resto',?)", (time.time(),))
+    e.guardar("indice:-100:oferton", "55")
+    e.guardar("tema:-100:resto", "12")
+    e.db.commit()
+    e2 = Estado(ruta)
+    cats = dict(e2.db.execute("SELECT clave, categoria FROM mensajes").fetchall())
+    assert cats == {"wallapop:1": "usada_oferton", "game:1": "nueva_buen_precio"}
+    assert e2.leer("indice:-100:usada_oferton") == "55" and e2.leer("tema:-100:usada_resto") == "12"
+
+
+def test_preparar_temas_crea_los_que_faltan_y_renombra(monkeypatch, estado):
+    crea = [{"ok": True, "result": {"message_thread_id": 20 + i}} for i in range(4)]
+    # orden de las secciones: nueva_oferton, nueva_buen_precio, usada_oferton (ya existe: renombrar), ...
+    respuestas = crea[:2] + [{"ok": True, "result": True}] + crea[2:]
+    t = tg(respuestas, monkeypatch)
+    av = Avisador([], telegram=t, grupo_id="-100123", estado=estado, temas={"usada_oferton": 3})
+    av.preparar_temas()
+    metodos = [m for m, _ in t.s.llamadas]
+    assert metodos.count("createForumTopic") == 4 and metodos.count("editForumTopic") == 1
+    nombres = [d["name"] for m, d in t.s.llamadas]
+    assert "🆕 Nuevas · 🔥 Ofertones" in nombres and "♻️ Segunda mano · 🔥 Ofertones" in nombres
+    av.preparar_temas()                                                           # segunda vez: nada
+    assert len(t.s.llamadas) == 5

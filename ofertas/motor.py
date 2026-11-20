@@ -112,7 +112,8 @@ class Motor:
             aviso = avisos.formatear(a, producto, v.motivo, v.mediana, v.muestras, dist,
                                      v.sospechoso, categoria=v.categoria)
             anterior = self.estado.mensaje(a.clave)
-            ref = self.avisador.enviar_oferta(aviso, v.categoria)
+            sec = avisos.seccion(a.nuevo, v.categoria)
+            ref = self.avisador.enviar_oferta(aviso, sec)
             if ref is None:
                 continue
             self.avisos_enviados += 1
@@ -120,7 +121,7 @@ class Motor:
             if anterior and anterior.get("message_id"):   # el aviso viejo: "ha bajado, mira el nuevo"
                 self.avisador.editar(anterior, avisos.con_estado(
                     anterior["html"], avisos.prefijo_estado("rebajada", a.precio), bool(anterior["con_foto"])))
-            self.estado.guardar_mensaje(a, a.id, producto, v.categoria, ref, aviso.html)
+            self.estado.guardar_mensaje(a, a.id, producto, sec, ref, aviso.html)
         if resto:
             log.info("%d ofertas más caras quedan para la próxima pasada", len(resto))
         self.pendientes = []
@@ -157,11 +158,10 @@ class Motor:
     def _actualizar_indices(self) -> None:
         if not self.avisador.con_grupo:
             return
-        for categoria in avisos.CATEGORIAS:
-            filas = self.estado.mensajes_categoria(categoria, self.cfg.dias_seguimiento)
-            if filas or self.estado.leer(f"indice:{self.avisador.grupo_id}:{categoria}"):
-                self.avisador.indice(categoria, avisos.construir_indice(
-                    categoria, filas, self.cfg.dias_seguimiento))
+        self.avisador.preparar_temas()
+        for sec in avisos.CATEGORIAS:
+            filas = self.estado.mensajes_categoria(sec, self.cfg.dias_seguimiento)
+            self.avisador.indice(sec, avisos.construir_indice(sec, filas, self.cfg.dias_seguimiento))
 
     def _estrenar_grupo(self) -> None:
         """La primera vez que se usa un grupo, vuelve a mandar lo que sigue publicado."""
@@ -332,8 +332,9 @@ class Motor:
         self.estado.guardar_stock(t.url, en_stock, precio, avisado)
         log.info("%s · %s: %s, stock=%s", t.nombre, prod.nombre, euros(precio), en_stock)
         if motivo:
-            aviso = avisos.formatear(a, prod.nombre, motivo, categoria="oferton" if buen_precio else "resto")
-            if self.avisador.enviar_oferta(aviso, "oferton" if buen_precio else "resto") is not None:
+            cat = "oferton" if buen_precio else "buen_precio"
+            aviso = avisos.formatear(a, prod.nombre, motivo, categoria=cat)
+            if self.avisador.enviar_oferta(aviso, avisos.seccion(True, cat)) is not None:
                 self.avisos_enviados += 1
 
     def _mandar(self, aviso: avisos.Aviso) -> bool:
