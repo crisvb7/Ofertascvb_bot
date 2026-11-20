@@ -29,6 +29,12 @@ def wp(id_, titulo, precio, lugar=OVIEDO, envio=False, desc="", ciudad="Oviedo")
     ("Volante G29 PS5/PS4", False),
     ("Mando DualSense Edge PS5", False),
     ("PS5 averiada", False),
+    ("Mando DualSense PS5 Edición Grand Theft Auto", False),
+    ("Mando Inalámbrico SCUF Omega para PS5 y PC", False),
+    ("GTA VI Edición Coleccionista PS5", False),
+    ("Juego Astro Bot PS5", False),
+    ("PS5 Slim + GTA VI", True),
+    ("Consola PS5 con mando", True),
 ])
 def test_coincide_ps5(cfg, titulo, esperado):
     assert cfg.producto("PS5").coincide(wp("1", titulo, 300)) is esperado

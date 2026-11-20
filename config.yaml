@@ -27,7 +27,7 @@ intervalos_min:
 
 fuentes:
   wallapop: true
-  vinted: true
+  vinted: false        # desde los servidores de GitHub Vinted responde 404; ponlo a true si lo ejecutas en casa
   chollometro: true    # chollos de tiendas oficiales (Amazon, MediaMarkt, PcComponentes...)
   tiendas: true        # fichas concretas de la lista "tiendas" de abajo
 
@@ -68,6 +68,12 @@ excluir_comun:
   - '\bcascos\b'
   - '\bmonitor\b'
   - '\bmueble\b'
+  # títulos que empiezan por un accesorio o un juego ("Mando DualSense PS5...", "Juego GTA PS5...")
+  - '^\W*(mandos?|dualsense|scuf|controller|controlador|gamepad|juegos?|volante|cascos)\b'
+  - '\bscuf\b'
+  - '\bcoleccionista\b'
+  - '\bcollector'
+  - '\bsteelbook\b'
 
 # Lo mismo, pero buscando en la DESCRIPCIÓN del anuncio.
 excluir_descripcion_comun:
