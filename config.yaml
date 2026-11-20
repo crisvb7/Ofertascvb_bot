@@ -93,7 +93,7 @@ productos:
     excluir: ['\bpro\b', '\bportal\b', '\bpsvr', '\bvr\s?2?\b', '\bedge\b', '\bpulse\b']
     segunda_mano:
       min: 150     # por debajo casi siempre es accesorio, juego o estafa
-      max: 340     # avísame siempre por debajo de esto
+      max: 420     # avísame siempre por debajo de esto
     nuevo:
       min: 250     # quita juegos, mandos y cuotas "6,50 €/mes"
       max: 529
@@ -105,7 +105,7 @@ productos:
     excluir: ['series\s?s\b', 'series\s?x\s?[|/-]\s?s\b', '\bone\s?[xs]\b', '\belite\b']
     segunda_mano:
       min: 200
-      max: 340
+      max: 420
     nuevo:
       min: 300
       max: 699
