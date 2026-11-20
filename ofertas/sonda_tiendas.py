@@ -133,3 +133,45 @@ def formatos2() -> None:
         log.info("F2 carref otras claves: %s", sorted(k for k in j.keys()))
     except Exception as e:
         log.info("F2 carref error %s", e)
+
+
+def formatos3() -> None:
+    import json as _json
+    s = sesion_navegador()
+    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
+    try:
+        t = s.get("https://www.game.es/buscar/consola-ps5", timeout=25, headers=h).text
+        i = t.find("priceInfoSection")
+        log.info("F3 game precio: %s", " ".join(t[i:i + 3000].split())[:2600])
+    except Exception as e:
+        log.info("F3 game error %s", e)
+    try:
+        t = s.get(TIENDAS["elcorteingles"], timeout=25, headers=h).text
+        m = re.search(r"window\.__MOONSHINE_STATE__\s*=\s*", t)
+        estado, _ = _json.JSONDecoder().raw_decode(t[m.end():])
+
+        def buscar(n, prof=0):
+            if prof > 12:
+                return
+            if isinstance(n, dict):
+                if "_uri" in n and "_status" in n:
+                    yield n
+                for v in n.values():
+                    yield from buscar(v, prof + 1)
+            elif isinstance(n, list):
+                for v in n:
+                    yield from buscar(v, prof + 1)
+        prods = list(buscar(estado))
+        log.info("F3 eci %d productos en el estado", len(prods))
+        if prods:
+            p = prods[0]
+            log.info("F3 eci claves=%s", sorted(p.keys()))
+            for clave in ("title", "name", "_uri", "_status", "price", "prices", "pricing", "image", "brand"):
+                if clave in p:
+                    log.info("F3 eci   %s = %s", clave, " ".join(_json.dumps(p[clave], ensure_ascii=False)[:500].split()))
+            for p in prods[:8]:
+                log.info("F3 eci · %s | %s | %s", p.get("title") or p.get("name"), p.get("_status"),
+                         " ".join(_json.dumps(p.get("price") or p.get("prices") or p.get("pricing"),
+                                              ensure_ascii=False)[:200].split()))
+    except Exception as e:
+        log.info("F3 eci error %r", e)
