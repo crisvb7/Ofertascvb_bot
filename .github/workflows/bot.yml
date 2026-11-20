@@ -78,7 +78,7 @@ jobs:
           case "$ACCION" in
             prueba)      python bot.py --prueba ;;
             diagnostico) python bot.py --diagnostico ;;
-            simular)     python bot.py --simular ;;
+            simular)     pip install -q pillow; python herramientas/sonda.py ;;
             pasada)      python bot.py --una-vez ;;
             *)           python bot.py --minutos "$MINUTOS" ;;
           esac
