@@ -365,7 +365,7 @@ CABECERAS = {
 
 def formatear(a, producto: str, motivo: str, mediana: float | None = None, muestras: int = 0,
               distancia: float | None = None, sospechoso: bool = False,
-              categoria: str = "resto", duda: str = "") -> Aviso:
+              categoria: str = "resto", duda: str = "", vendedor: str = "") -> Aviso:
     e = html.escape
     fuente = ETIQUETA_FUENTE.get(a.fuente, a.fuente)
     tipo = "nueva" if a.nuevo else "segunda mano"
@@ -396,6 +396,9 @@ def formatear(a, producto: str, motivo: str, mediana: float | None = None, muest
     if a.publicado:
         h.append(f"🕐 Publicado {hora_local(a.publicado)}")
         t.append(f"🕐 Publicado {hora_local(a.publicado)}")
+    if vendedor:
+        h.append(e(vendedor))
+        t.append(vendedor)
     if a.estado:
         h.append(f"✨ Estado: {e(a.estado)}")
         t.append(f"✨ Estado: {a.estado}")

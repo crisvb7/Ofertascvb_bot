@@ -59,6 +59,7 @@ def cfg(monkeypatch):
                  "cex": False, "cashconverters": False, "carrefour": False, "game": False,
                  "elcorteingles": False}
     c.avisar_todas, c.max_por_pasada = True, 25
+    c.antifraude.activo = False          # cada test de antifraude lo enciende (sin red)
     limites = {"PS5": (150, 380, 250, 529, 650), "Xbox Series X": (200, 450, 300, 699, 800)}
     for p in c.productos:
         if p.nombre in limites:

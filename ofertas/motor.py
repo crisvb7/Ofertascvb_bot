@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 
 from . import avisos
+from .antifraude import Antifraude
 from .config import Config, Producto
 from .estado import Estado
 from .fuentes import cashconverters, carrefour, cex, chollometro, elcorteingles, game, tiendas, wallapop
@@ -40,6 +41,7 @@ class Veredicto:
     oferton: bool = False
     categoria: str = "resto"          # oferton | buen_precio | resto
     duda: str = ""                    # por qué no está claro que sea una consola
+    vendedor: str = ""                # valoraciones y antigüedad del vendedor
 
 
 class Motor:
@@ -52,6 +54,7 @@ class Motor:
         self.pendientes: list[tuple[Anuncio, Veredicto, float | None, str]] = []
         self.sesion = sesion_navegador()
         self.vinted = Vinted(sesion_navegador(), cfg.dominio_vinted)
+        self.antifraude = Antifraude(cfg, estado, self.sesion)
         # El ritmo de cada fuente se guarda en la BD: así sobrevive a reinicios y funciona
         # también cuando el bot se ejecuta a ratos (GitHub Actions, cron).
         self.proxima = {f: float(estado.leer(f"proxima:{f}", "0")) for f in FUENTES}
@@ -70,6 +73,7 @@ class Motor:
         self._estrenar_grupo()
         self._reclasificar_enviados()
         self._quitar_baratos_enviados()
+        self._limpiar_falsos_enviados()
         for fuente in FUENTES:
             if not self.cfg.activa(fuente) or (fuente == "tiendas" and not self.cfg.tiendas):
                 continue
@@ -114,7 +118,8 @@ class Motor:
         enviar, resto = (orden[:tope], orden[tope:]) if tope else (orden, [])
         for a, v, dist, producto in enviar:
             aviso = avisos.formatear(a, producto, v.motivo, v.mediana, v.muestras, dist,
-                                     v.sospechoso, categoria=v.categoria, duda=v.duda)
+                                     v.sospechoso, categoria=v.categoria, duda=v.duda,
+                                     vendedor=v.vendedor)
             anterior = self.estado.mensaje(a.clave)
             sec = avisos.seccion(a.nuevo, v.categoria, bool(v.duda))
             ref = self.avisador.enviar_oferta(aviso, sec)
@@ -226,6 +231,46 @@ class Motor:
         self.estado.guardar(clave, "1")
         log.info("Precio mínimo aplicado a lo ya enviado: %d borrados, %d marcados", borrados, marcados)
 
+    def _limpiar_falsos_enviados(self, por_pasada: int = 15) -> None:
+        """Revisa con el filtro de falsos lo ya enviado de Wallapop (unos pocos por pasada) y
+        quita del grupo los que no lo pasan."""
+        if not self.antifraude.activo:
+            return
+        quitados = revisados = 0
+        for f in self.estado.mensajes_recientes(self.cfg.dias_seguimiento):
+            if revisados >= por_pasada:
+                break
+            if f["fuente"] != "wallapop" or f["estado"] not in ("disponible", "reservada"):
+                continue
+            marca = f"antifraude:{f['clave']}"
+            if self.estado.leer(marca):
+                continue
+            try:
+                uid = wallapop.dueno(self.sesion, f["item_id"])
+                a = Anuncio(fuente="wallapop", id=f["item_id"] or "", titulo=f["titulo"] or "",
+                            precio=f["precio"], url=f["url"] or "", publicado=f["publicado"], vendedor=uid)
+                rev = self.antifraude.revisar(a) if uid else None
+            except (Bloqueado, *ERRORES_RED) as e:
+                log.warning("No he podido revisar un aviso ya enviado: %s", str(e)[:120])
+                break
+            revisados += 1
+            self.estado.guardar(marca, "1")
+            if not (rev and rev.motivo):
+                self._dormir_corto()
+                continue
+            quitados += 1
+            log.info("Quito un aviso ya enviado que parece falso: %s (%s)", f["clave"], rev.motivo)
+            if f.get("message_id") and self.avisador.borrar(f):
+                self.estado.actualizar_mensaje(f["clave"], estado="borrada")
+            else:
+                if f.get("message_id"):
+                    prefijo = f"🚫 <b>POSIBLE ANUNCIO FALSO</b>: {avisos.html.escape(rev.motivo)}"
+                    self.avisador.editar(f, avisos.con_estado(f["html"], prefijo, bool(f["con_foto"])))
+                self.estado.actualizar_mensaje(f["clave"], estado="descartada")
+            self._dormir_corto()
+        if revisados:
+            log.info("Filtro de falsos sobre lo ya enviado: %d revisados, %d quitados", revisados, quitados)
+
     def _estrenar_grupo(self) -> None:
         """La primera vez que se usa un grupo, vuelve a mandar lo que sigue publicado."""
         if not self.avisador.con_grupo:
@@ -308,7 +353,8 @@ class Motor:
     def procesar(self, anuncios: list[Anuncio], prod: Producto, fuente: str) -> None:
         """Filtra y evalúa; las ofertas se mandan al final de la pasada, ordenadas por precio."""
         vistos: set[str] = set()
-        n_ofertas = 0
+        candidatos: list[tuple[Anuncio, str, dict | None]] = []
+        n_ofertas = n_falsos = 0
         for a in anuncios:
             if a.precio is None or a.reservado:
                 continue
@@ -321,8 +367,12 @@ class Motor:
             pmin, _ = prod.limites(a.nuevo)
             if pmin is not None and a.precio < pmin:
                 continue                   # accesorio, juego, caja vacía, cuota mensual...
-            previo = self.estado.registrar(a, prod.nombre)
+            candidatos.append((a, duda, self.estado.registrar(a, prod.nombre)))
+        # Huella de las fotos, del más antiguo al más nuevo: así el original queda antes que la copia.
+        for a, _, _ in reversed(candidatos):
+            self.antifraude.registrar_foto(a)
 
+        for a, duda, previo in candidatos:
             dist = None
             if a.lat is not None and a.lon is not None:
                 dist = distancia_km(self.cfg.lat, self.cfg.lon, a.lat, a.lon)
@@ -332,11 +382,19 @@ class Motor:
 
             v = self.evaluar(a, prod, previo)
             v.duda = duda
-            if v.avisar:
-                self.pendientes.append((a, v, dist, prod.nombre))
-                n_ofertas += 1
-        log.info("%s · %s: %d anuncios válidos, %d para avisar", fuente, prod.nombre,
-                 len(vistos), n_ofertas)
+            if not v.avisar:
+                continue
+            rev = self.antifraude.revisar(a)
+            if rev.motivo:
+                n_falsos += 1
+                log.info("Posible anuncio falso, no lo mando: %s · %s € · %s (%s)",
+                         a.clave, a.precio, a.titulo[:60], rev.motivo)
+                continue
+            v.vendedor = rev.vendedor
+            self.pendientes.append((a, v, dist, prod.nombre))
+            n_ofertas += 1
+        log.info("%s · %s: %d anuncios válidos, %d para avisar, %d posibles falsos", fuente, prod.nombre,
+                 len(vistos), n_ofertas, n_falsos)
 
     def evaluar(self, a: Anuncio, prod: Producto, previo: dict | None) -> Veredicto:
         _, pmax = prod.limites(a.nuevo)

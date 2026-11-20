@@ -22,6 +22,14 @@ CREATE TABLE IF NOT EXISTS stock (
     en_stock INTEGER, precio REAL, actualizado REAL, avisado_precio REAL
 );
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS vendedores (
+    id TEXT PRIMARY KEY, fuente TEXT, nombre TEXT, alta REAL,
+    valoraciones INTEGER, nota REAL, ventas INTEGER, leido REAL
+);
+CREATE TABLE IF NOT EXISTS fotos (
+    clave TEXT PRIMARY KEY, huella INTEGER, fuente TEXT, vendedor TEXT,
+    precio REAL, orden REAL, visto REAL
+);
 CREATE TABLE IF NOT EXISTS mensajes (
     clave TEXT PRIMARY KEY,
     fuente TEXT, item_id TEXT, producto TEXT, categoria TEXT,
@@ -146,7 +154,7 @@ class Estado:
     def mensajes_a_comprobar(self, fuente: str, dias: float, cada_min: float, limite: int) -> list[dict]:
         ahora = time.time()
         filas = self.db.execute(
-            "SELECT * FROM mensajes WHERE fuente=? AND estado NOT IN ('vendida','descartada') AND enviado>=? "
+            "SELECT * FROM mensajes WHERE fuente=? AND estado NOT IN ('vendida','descartada','borrada') AND enviado>=? "
             "AND comprobado<=? ORDER BY comprobado LIMIT ?",
             (fuente, ahora - dias * 86400, ahora - cada_min * 60, limite)).fetchall()
         return [dict(f) for f in filas]
@@ -168,6 +176,35 @@ class Estado:
         self.db.execute("UPDATE anuncios SET avisado_precio=NULL")
         self.db.commit()
 
+    # --- antifraude -----------------------------------------------------
+    def vendedor(self, id_: str, max_horas: float = 12) -> dict | None:
+        fila = self.db.execute("SELECT * FROM vendedores WHERE id=? AND leido>=?",
+                               (id_, time.time() - max_horas * 3600)).fetchone()
+        return dict(fila) if fila else None
+
+    def guardar_vendedor(self, id_: str, fuente: str, datos: dict) -> None:
+        self.db.execute("INSERT OR REPLACE INTO vendedores VALUES (?,?,?,?,?,?,?,?)",
+                        (id_, fuente, datos.get("nombre"), datos.get("alta"), datos.get("valoraciones"),
+                         datos.get("nota"), datos.get("ventas"), time.time()))
+        self.db.commit()
+
+    def foto(self, clave: str) -> dict | None:
+        fila = self.db.execute("SELECT rowid AS fila, * FROM fotos WHERE clave=?", (clave,)).fetchone()
+        return dict(fila) if fila else None
+
+    def guardar_foto(self, a: Anuncio, huella: int) -> None:
+        ahora = time.time()
+        self.db.execute("INSERT OR IGNORE INTO fotos VALUES (?,?,?,?,?,?,?)",
+                        (a.clave, huella, a.fuente, a.vendedor, a.precio, a.publicado or ahora, ahora))
+        self.db.commit()
+
+    def fotos_anteriores(self, foto: dict) -> list[dict]:
+        """Las fotos de otros anuncios publicados antes que este (las candidatas a ser el original)."""
+        filas = self.db.execute(
+            "SELECT rowid AS fila, * FROM fotos WHERE clave!=? AND (orden<? OR (orden=? AND rowid<?))",
+            (foto["clave"], foto["orden"], foto["orden"], foto["fila"])).fetchall()
+        return [dict(f) for f in filas]
+
     # --- varios ---------------------------------------------------------
     def leer(self, clave: str, defecto: str | None = None) -> str | None:
         fila = self.db.execute("SELECT v FROM meta WHERE k=?", (clave,)).fetchone()
@@ -188,4 +225,6 @@ class Estado:
         limite = time.time() - dias * 86400
         self.db.execute("DELETE FROM anuncios WHERE visto_ultima < ?", (limite,))
         self.db.execute("DELETE FROM mensajes WHERE enviado < ?", (limite,))
+        self.db.execute("DELETE FROM fotos WHERE visto < ?", (limite,))
+        self.db.execute("DELETE FROM vendedores WHERE leido < ?", (limite,))
         self.db.commit()

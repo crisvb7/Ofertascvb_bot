@@ -25,7 +25,20 @@ anuncios de toda Europa):
   o si es "busco", PS5 Pro, PS Portal, Series S, una foto o la caja vacía.
 - ❓ **Dudosa** → tema **Revisar**, con el motivo: menciona un juego o accesorio sin decir que sea la
   consola, habla de cambio, de avería o "modo seguro", o pide leer el anuncio. Así no se salta ninguna.
-También descarta los anuncios reservados y los de fuera de tu radio sin envío. Si algo está sospechosamente barato
+También descarta los anuncios reservados y los de fuera de tu radio sin envío.
+
+**Anuncios falsos fuera** (solo segunda mano). No te llega un anuncio si:
+- el vendedor de Wallapop **no tiene ninguna valoración**, o su **cuenta se creó menos de 30 días** antes
+  de publicar el anuncio;
+- su **foto ya salió en otro anuncio** anterior de otro vendedor (foto robada o sacada de internet).
+  El bot guarda una huella de cada foto y las compara, aunque estén recomprimidas o en otro tamaño;
+- pide tratar **fuera de la plataforma**: WhatsApp, Telegram, un teléfono o un e-mail, "solo Bizum",
+  "PayPal amigos"...
+
+En los que sí llegan de Wallapop verás una línea como `👤 48 valoraciones (4,9★) · en Wallapop desde feb 2018`.
+Vinted no deja al bot ver el perfil del vendedor, así que ahí solo se aplican las fotos y las frases.
+Lo ya enviado de Wallapop se revisa también (unos pocos por pasada) y se borra del grupo si no pasa.
+Todo se ajusta en `config.yaml → antifraude`. Si algo está sospechosamente barato
 (menos de la mitad de la mediana) te lo marca como posible estafa.
 
 ---

@@ -116,6 +116,25 @@ excluir_descripcion_comun:
   - 'caja vacia'
   - 'solo (vendo )?la caja'
 
+
+# --- Anuncios falsos (solo segunda mano: Wallapop y Vinted) --------------------
+# Lo que no pase este filtro no te llega. Vinted no deja ver el perfil del vendedor,
+# así que allí solo se miran las fotos y las frases.
+antifraude:
+  activo: true
+  sin_valoraciones: true    # vendedor sin ninguna valoración (Wallapop)
+  dias_cuenta_min: 30       # cuenta creada menos de 30 días antes de publicar el anuncio (Wallapop)
+  fotos_repetidas: true     # la foto ya salió en otro anuncio anterior de otro vendedor
+  # contacto o pago fuera de la plataforma (en el título o la descripción).
+  # No cuenta si va negado justo antes: "no contesto por WhatsApp", "nada de Bizum"...
+  frases:
+    - '\b(whats\s?app|whatsap|wasap|wassap|wsp|telegram)\b'
+    - '\b(solo|sólo|únicamente|unicamente)\s+(bizum|transferencia|paypal)\b'
+    - '\bpaypal\s+(amigos|familia|friends)\b'
+    - '\b(llama|llamar|escrib\w*|contact\w*|mand\w*)\b.{0,20}\b(al|a mi|mi)\s+(n[uú]mero|m[oó]vil|tel[eé]fono|correo|email|mail)\b'
+    - '(?<![\d.,])(\+?34[\s.-]?)?[67](?:[\s.-]?\d){8}(?![\d.,])'              # un móvil español
+    - '\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b'                                       # un e-mail
+
 productos:
   # PVP actual en España: 649,99 € con lector, 599,99 € Digital.
   - nombre: PS5

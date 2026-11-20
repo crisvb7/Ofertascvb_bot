@@ -81,6 +81,15 @@ class Tienda:
 
 
 @dataclass
+class FiltroFalsos:
+    activo: bool = True
+    sin_valoraciones: bool = True       # quita vendedores sin ninguna valoración
+    dias_cuenta_min: float = 30         # quita cuentas creadas menos de N días antes del anuncio
+    fotos_repetidas: bool = True        # quita anuncios con la foto de otro anuncio de otro vendedor
+    frases: list[re.Pattern] = field(default_factory=list)   # contacto/pago fuera de la plataforma
+
+
+@dataclass
 class Config:
     productos: list[Producto]
     tiendas: list[Tienda] = field(default_factory=list)
@@ -103,6 +112,7 @@ class Config:
     feeds_chollometro: list[str] = field(default_factory=list)
     paginas_wallapop: int = 1
     dominio_vinted: str = "www.vinted.es"
+    antifraude: FiltroFalsos = field(default_factory=FiltroFalsos)
     # secretos (.env)
     telegram_token: str | None = None
     telegram_chat_id: str | None = None
@@ -177,6 +187,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
     merc = datos.get("mercado") or {}
     av = datos.get("avisos") or {}
     tg = datos.get("telegram") or {}
+    af = datos.get("antifraude") or {}
     env = os.environ.get
     return Config(
         productos=productos,
@@ -202,6 +213,13 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
         feeds_chollometro=datos.get("chollometro_feeds") or ["https://www.chollometro.com/rss/nuevos"],
         paginas_wallapop=int(datos.get("paginas_wallapop", 1)),
         dominio_vinted=datos.get("dominio_vinted", "www.vinted.es"),
+        antifraude=FiltroFalsos(
+            activo=bool(af.get("activo", True)),
+            sin_valoraciones=bool(af.get("sin_valoraciones", True)),
+            dias_cuenta_min=float(af.get("dias_cuenta_min", 30) or 0),
+            fotos_repetidas=bool(af.get("fotos_repetidas", True)),
+            frases=[re.compile(f, re.I) for f in af.get("frases") or []],
+        ),
         telegram_token=env("TELEGRAM_TOKEN") or None,
         telegram_chat_id=env("TELEGRAM_CHAT_ID") or None,
         callmebot_telefono=env("CALLMEBOT_TELEFONO") or None,

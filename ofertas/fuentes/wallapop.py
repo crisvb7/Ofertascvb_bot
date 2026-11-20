@@ -120,6 +120,7 @@ def a_anuncio(it: dict) -> Anuncio | None:
         envio=bool(envio) if envio is not None else None,
         reservado=bool(reservado),
         publicado=_segundos(it.get("created_at") or it.get("modified_at")),
+        vendedor=str(it.get("user_id") or (it.get("user") or {}).get("id") or "") or None,
     )
 
 
@@ -150,6 +151,43 @@ def estado(sesion, item_id: str) -> tuple[str, float | None]:
     if (d.get("flags") or {}).get("sold") or d.get("sold"):
         return "vendida", parsear_precio(precio)
     return ("reservada" if reservado else "disponible"), parsear_precio(precio)
+
+
+def vendedor(sesion, user_id: str) -> dict | None:
+    """Perfil público del vendedor: alta, valoraciones, nota y ventas. None si ya no existe."""
+    r = sesion.get(f"https://api.wallapop.com/api/v3/users/{user_id}", headers=CABECERAS, timeout=20)
+    if r.status_code in (404, 410):
+        return None
+    if r.status_code in (401, 403, 429):
+        raise Bloqueado(f"Wallapop (perfil) respondió {r.status_code}")
+    r.raise_for_status()
+    u = r.json() or {}
+    time.sleep(random.uniform(0.3, 0.8))
+    s = sesion.get(f"https://api.wallapop.com/api/v3/users/{user_id}/stats", headers=CABECERAS, timeout=20)
+    if s.status_code in (401, 403, 429):
+        raise Bloqueado(f"Wallapop (valoraciones) respondió {s.status_code}")
+    s.raise_for_status()
+    st = s.json() or {}
+    contadores = {c.get("type"): c.get("value") for c in st.get("counters") or [] if isinstance(c, dict)}
+    return {
+        "nombre": u.get("micro_name"),
+        "alta": _segundos(u.get("register_date")),
+        "valoraciones": int(contadores.get("reviews") or 0),
+        "nota": numero(st.get("rating_average")),
+        "ventas": int(contadores.get("sells") or contadores.get("sold") or 0),
+    }
+
+
+def dueno(sesion, item_id: str) -> str | None:
+    """Id del vendedor de un anuncio (None si el anuncio ya no existe)."""
+    r = sesion.get(f"https://api.wallapop.com/api/v3/items/{item_id}", headers=CABECERAS, timeout=20)
+    if r.status_code in (404, 410):
+        return None
+    if r.status_code in (401, 403, 429):
+        raise Bloqueado(f"Wallapop (detalle) respondió {r.status_code}")
+    r.raise_for_status()
+    d = r.json() or {}
+    return str((d.get("user") or {}).get("id") or d.get("user_id") or "") or None
 
 
 def _imagen(it: dict) -> str | None:

@@ -1,5 +1,7 @@
 requests>=2.31
 PyYAML>=6.0
+# Compara fotos para detectar anuncios falsos (si falta, el bot funciona sin esa parte).
+Pillow>=10
 # Imita la huella TLS de Chrome: ayuda mucho con Vinted y las tiendas.
 # No hay versión para Raspberry Pi de 32 bits; ahí el bot funciona sin él.
 curl_cffi>=0.7; platform_machine == "x86_64" or platform_machine == "AMD64" or platform_machine == "aarch64" or platform_machine == "arm64"
