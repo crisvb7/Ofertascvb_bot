@@ -164,3 +164,50 @@ def sonda_plataformas() -> None:
             log.info("Sonda %-15s  inicio: %s", nombre, " ".join(texto[:220].split()))
         except Exception as e:
             log.info("Sonda %-15s error: %s", nombre, str(e)[:150])
+
+
+def sonda_formatos() -> None:
+    """Solo log: dónde vienen los datos en Cash Converters, rebuy, CeX y Vinted."""
+    import json as _json
+    import re as _re
+    s = sesion_navegador()
+    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
+
+    def trozos(nombre, texto, patron, n=3, ancho=260):
+        for m in list(_re.finditer(patron, texto))[:n]:
+            ini = max(0, m.start() - 40)
+            log.info("Formato %-8s …%s…", nombre, " ".join(texto[ini:ini + ancho].split()))
+
+    try:
+        t = s.get(SONDAS["cashconverters"], timeout=25, headers=h).text
+        for b in _re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', t, _re.S)[:4]:
+            try:
+                j = _json.loads(b)
+                log.info("Formato cashconv JSON-LD @type=%s claves=%s · %s", j.get("@type") if isinstance(j, dict) else "lista",
+                         list(j.keys())[:8] if isinstance(j, dict) else len(j), " ".join(b[:300].split()))
+            except ValueError:
+                pass
+        trozos("cashconv", t, r'data-product|product-tile|product-card|"price"', 3)
+    except Exception as e:
+        log.info("Formato cashconv error %s", e)
+    try:
+        t = s.get(SONDAS["rebuy"], timeout=25, headers=h).text
+        trozos("rebuy", t, r'"items"\s*:', 2, 400)
+        trozos("rebuy", t, r'window\.__[A-Za-z_]+', 3, 120)
+    except Exception as e:
+        log.info("Formato rebuy error %s", e)
+    try:
+        t = s.get(SONDAS["cex_web"], timeout=25, headers=h).text
+        trozos("cex", t, r'(?i)algolia', 4, 220)
+        trozos("cex", t, r'boxName|sellPrice|"boxId"', 3, 220)
+        for js in sorted(set(_re.findall(r'src="([^"]+\.js)"', t)))[:12]:
+            log.info("Formato cex script %s", js)
+    except Exception as e:
+        log.info("Formato cex error %s", e)
+    try:
+        t = s.get(SONDAS["vinted_portada"], timeout=25, headers=h).text
+        rutas = sorted(set(_re.findall(r'/api/v\d/[a-z_/]+', t)))
+        log.info("Formato vinted rutas api en portada: %s", rutas[:40])
+        trozos("vinted", t, r'catalog', 3, 200)
+    except Exception as e:
+        log.info("Formato vinted error %s", e)

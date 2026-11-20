@@ -95,7 +95,7 @@ def main() -> int:
 
     if args.simular:
         from ofertas import diagnostico
-        diagnostico.sonda_plataformas()       # temporal: probar nuevas plataformas
+        diagnostico.sonda_formatos()          # temporal: probar nuevas plataformas
         n = motor.ciclo(forzar=True)
         log.info("Simulación terminada: %d avisos (no se ha enviado nada)", n)
         return 0
