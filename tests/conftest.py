@@ -23,7 +23,13 @@ class AvisadorFalso:
 def cfg(monkeypatch):
     for k in ("TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID", "CALLMEBOT_TELEFONO", "CALLMEBOT_APIKEY"):
         monkeypatch.delenv(k, raising=False)
-    return config.cargar(RAIZ / "config.yaml")
+    c = config.cargar(RAIZ / "config.yaml")
+    # Límites fijos para los tests: así puedes cambiar los precios de config.yaml sin romperlos.
+    limites = {"PS5": (150, 380, 250, 529), "Xbox Series X": (200, 450, 300, 699)}
+    for p in c.productos:
+        if p.nombre in limites:
+            p.usado_min, p.usado_max, p.nuevo_min, p.nuevo_max = limites[p.nombre]
+    return c
 
 
 @pytest.fixture
