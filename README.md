@@ -98,6 +98,35 @@ ejecución ya lo usa.
 
 ---
 
+## Apartados en un grupo de Telegram (opcional, recomendado)
+
+En vez de recibirlo todo en el chat del bot, puedes tener un grupo con un **tema por apartado**:
+
+- **🔥 Ofertones** · **💰 Buen precio** (por debajo de la mediana del mercado) · **🏷️ Resto**
+- Cada oferta va a su tema, con foto y enlace.
+- Cada ~25 min el bot revisa los anuncios de Wallapop de los últimos 3 días: si se venden o se retiran,
+  el mensaje se marca **❌ YA NO ESTÁ DISPONIBLE**; si cambian de precio, lo indica.
+- Arriba de cada tema hay un **📌 índice fijado** con lo disponible, **lo más nuevo arriba**, y lo que
+  ya no está, tachado.
+- Puedes silenciar el tema 🏷️ Resto y dejar con sonido solo los ofertones.
+
+Cómo montarlo:
+
+1. En Telegram: **Nuevo grupo** → ponle nombre → añade a tu bot → crear.
+2. Info del grupo → **Editar** → activa **Temas**.
+3. **Administradores → Añadir administrador →** tu bot, con permiso para **Administrar temas** y
+   **Fijar mensajes**.
+4. Escribe cualquier cosa en el grupo.
+5. En GitHub: **Actions → Bot de ofertas → Run workflow → `diagnostico`**. En el informe que te llega
+   aparece el grupo con su id (empieza por `-100`).
+6. Pon ese id en `config.yaml`, en `telegram: grupo_id:`. El bot crea los temas solo y reenvía al grupo
+   las ofertas que sigan publicadas. Los avisos del sistema siguen llegando a tu chat privado.
+
+Nota: Wallapop no dice si un anuncio está reservado, solo si ya no existe, así que 🟡 *reservada* saldrá
+pocas veces.
+
+---
+
 ## Opción B · Gratis 24/7 en Oracle Cloud (Always Free)
 
 Si quieres que mire cada 5 minutos y sin las limitaciones de GitHub: Oracle da una máquina virtual gratis

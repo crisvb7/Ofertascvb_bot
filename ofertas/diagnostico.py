@@ -115,38 +115,21 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
             except Exception as e:
                 lineas.append(_error(t.nombre, e))
 
+    if cfg.telegram_token:
+        try:
+            grupos = [c for c in avisos.Telegram(cfg.telegram_token, None).chats()
+                      if c["tipo"] in ("group", "supergroup")]
+            for g in grupos:
+                temas = "con temas ✅" if g["foro"] else "SIN temas (actívalos en el grupo)"
+                lineas.append(f"👥 Grupo «{g['nombre']}»: id {g['id']} · {temas}")
+            if cfg.telegram_grupo_id:
+                lineas.append(f"📨 Las ofertas van al grupo {cfg.telegram_grupo_id}")
+        except Exception as e:
+            lineas.append(f"❌ Telegram (lista de grupos): {str(e)[:100]}")
+
     lineas.append("Si todo sale ✅ y no te llegan avisos, es que no hay ofertas por debajo de tus máximos.")
     for linea in lineas:
         log.info(linea)
     avisador.enviar(avisos.Aviso(html=html.escape("\n".join(lineas)), texto="\n".join(lineas)))
     return lineas
 
-
-def sonda_wallapop() -> None:
-    """Solo log: cómo devuelve Wallapop la hora de publicación y el estado de un anuncio."""
-    items = wallapop.extraer_items(wallapop.ultima_respuesta or {})
-    if not items:
-        log.info("Sonda: no hay respuesta de Wallapop guardada")
-        return
-    it = items[0]
-    reservados = [x for x in items if isinstance(x.get("reserved"), dict) and x["reserved"].get("flag")]
-    log.info("Sonda: created_at=%r modified_at=%r; reservados en la búsqueda: %d de %d",
-             it.get("created_at"), it.get("modified_at"), len(reservados), len(items))
-    s = sesion_navegador()
-    ids = [it.get("id")] + [x.get("id") for x in reservados[:1]]
-    for iid in ids:
-        url = f"https://api.wallapop.com/api/v3/items/{iid}"
-        try:
-            r = s.get(url, headers=wallapop.CABECERAS, timeout=20)
-            log.info("Sonda: GET %s -> %s", url, r.status_code)
-            if r.status_code < 400:
-                d = r.json()
-                log.info("Sonda: claves=%s", sorted(d.keys()) if isinstance(d, dict) else type(d))
-                for k in ("reserved", "sold", "flags", "status", "is_sold", "limit_status", "counters",
-                          "type_attributes", "type", "modified_date"):
-                    if isinstance(d, dict) and k in d:
-                        log.info("Sonda:   %s = %s", k, str(d[k])[:300])
-            else:
-                log.info("Sonda: cuerpo=%s", r.text[:300])
-        except Exception as e:
-            log.info("Sonda: error %s", e)

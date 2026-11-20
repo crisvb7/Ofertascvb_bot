@@ -58,8 +58,9 @@ def main() -> int:
         chats = avisos.Telegram(cfg.telegram_token, "").chats()
         if not chats:
             print("No veo mensajes. Abre tu bot en Telegram, pulsa Iniciar / escribe algo y repite.")
-        for cid, nombre in chats:
-            print(f"TELEGRAM_CHAT_ID={cid}   ({nombre})")
+        for c in chats:
+            extra = " · grupo con temas" if c["foro"] else ""
+            print(f"{c['id']}   ({c['nombre']}, {c['tipo']}{extra})")
         return 0
 
     if args.prueba:
@@ -84,7 +85,7 @@ def main() -> int:
         return 0
 
     estado = Estado(":memory:" if args.simular else ruta_bd)
-    avisador = avisos.crear_avisador(cfg, solo_consola=args.simular)
+    avisador = avisos.crear_avisador(cfg, solo_consola=args.simular, estado=estado)
     pausa = (1.0, 2.5) if args.una_vez else (2.0, 5.0)    # en GitHub Actions, cuanto más corto mejor
     motor = Motor(cfg, estado, avisador, pausa=(0, 0) if args.simular else pausa)
     log.info("Bot de ofertas %s (HTTP: %s) · productos: %s", __version__, MOTOR,
@@ -94,8 +95,6 @@ def main() -> int:
 
     if args.simular:
         n = motor.ciclo(forzar=True)
-        from ofertas import diagnostico
-        diagnostico.sonda_wallapop()
         log.info("Simulación terminada: %d avisos (no se ha enviado nada)", n)
         return 0
     if args.una_vez:

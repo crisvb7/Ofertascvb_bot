@@ -11,12 +11,33 @@ from ofertas.estado import Estado  # noqa: E402
 
 
 class AvisadorFalso:
-    def __init__(self):
-        self.avisos = []
+    """Imita al Avisador: guarda lo que se enviaría, editaría o fijaría."""
+
+    def __init__(self, con_grupo=False):
+        self.avisos = []          # todo lo enviado (ofertas y sistema), en orden
+        self.categorias = []      # categoría de cada oferta enviada
+        self.ediciones = []       # (message_id, html)
+        self.indices = {}         # categoría -> html del índice
+        self.con_grupo = con_grupo
+        self.grupo_id = "-100123" if con_grupo else None
+        self._n = 0
 
     def enviar(self, aviso):
         self.avisos.append(aviso)
         return True
+
+    def enviar_oferta(self, aviso, categoria):
+        self.avisos.append(aviso)
+        self.categorias.append(categoria)
+        self._n += 1
+        return {"chat_id": "-100123", "message_id": self._n, "con_foto": bool(aviso.imagen)}
+
+    def editar(self, ref, html):
+        self.ediciones.append((ref["message_id"], html))
+        return True
+
+    def indice(self, categoria, html):
+        self.indices[categoria] = html
 
 
 @pytest.fixture

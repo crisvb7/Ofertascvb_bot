@@ -28,6 +28,7 @@ class Veredicto:
     muestras: int = 0
     sospechoso: bool = False
     oferton: bool = False
+    categoria: str = "resto"          # oferton | buen_precio | resto
 
 
 class Motor:
@@ -55,6 +56,7 @@ class Motor:
         se lanza cada X minutos desde fuera y no puede esperar al momento exacto."""
         antes = self.avisos_enviados
         self.pendientes = []
+        self._estrenar_grupo()
         for fuente in FUENTES:
             if not self.cfg.activa(fuente) or (fuente == "tiendas" and not self.cfg.tiendas):
                 continue
@@ -82,6 +84,11 @@ class Motor:
             self.estado.guardar(f"castigo:{fuente}", self.castigo[fuente])
             self.estado.guardar(f"fallos:{fuente}", self.fallos[fuente])
         self._enviar_pendientes()
+        for paso in (self._comprobar_estados, self._actualizar_indices):
+            try:
+                paso()
+            except Exception:
+                log.exception("Error en %s", paso.__name__)
         return self.avisos_enviados - antes
 
     def _enviar_pendientes(self) -> None:
@@ -91,16 +98,70 @@ class Motor:
         orden = sorted(self.pendientes, key=lambda p: p[0].precio)
         tope = self.cfg.max_por_pasada
         enviar, resto = (orden[:tope], orden[tope:]) if tope else (orden, [])
-        for i, (a, v, dist, producto) in enumerate(enviar):
+        for a, v, dist, producto in enviar:
             aviso = avisos.formatear(a, producto, v.motivo, v.mediana, v.muestras, dist,
-                                     v.sospechoso, oferton=v.oferton)
-            if self._mandar(aviso):
-                self.estado.marcar_avisado(a.clave, a.precio)
-            if self.pausa[1] > 0 and i + 1 < len(enviar):
-                time.sleep(1.2)            # Telegram no quiere ráfagas
+                                     v.sospechoso, categoria=v.categoria)
+            anterior = self.estado.mensaje(a.clave)
+            ref = self.avisador.enviar_oferta(aviso, v.categoria)
+            if ref is None:
+                continue
+            self.avisos_enviados += 1
+            self.estado.marcar_avisado(a.clave, a.precio)
+            if anterior and anterior.get("message_id"):   # el aviso viejo: "ha bajado, mira el nuevo"
+                self.avisador.editar(anterior, avisos.con_estado(
+                    anterior["html"], avisos.prefijo_estado("rebajada", a.precio), bool(anterior["con_foto"])))
+            self.estado.guardar_mensaje(a, a.id, producto, v.categoria, ref, aviso.html)
         if resto:
             log.info("%d ofertas más caras quedan para la próxima pasada", len(resto))
         self.pendientes = []
+
+    def _comprobar_estados(self) -> None:
+        """Mira si los anuncios avisados siguen publicados y actualiza sus mensajes."""
+        if not (self.cfg.comprobar_estado and self.cfg.activa("wallapop")):
+            return
+        filas = self.estado.mensajes_a_comprobar("wallapop", self.cfg.dias_seguimiento,
+                                                 cada_min=25, limite=15)
+        cambios = 0
+        for f in filas:
+            try:
+                estado, precio = wallapop.estado(self.sesion, f["item_id"])
+            except (Bloqueado, *ERRORES_RED) as e:
+                log.warning("No he podido comprobar un anuncio: %s", str(e)[:120])
+                break
+            campos = {"comprobado": time.time()}
+            precio_cambia = precio is not None and f["precio"] is not None and abs(precio - f["precio"]) >= 1
+            if estado != f["estado"] or precio_cambia:
+                prefijo = avisos.prefijo_estado(estado, precio, f["precio"] if precio_cambia else None)
+                html_nuevo = avisos.con_estado(f["html"], prefijo, bool(f["con_foto"]))
+                if f.get("message_id"):
+                    self.avisador.editar(f, html_nuevo)
+                campos["estado"] = estado
+                if precio_cambia:
+                    campos["precio"] = precio
+                cambios += 1
+            self.estado.actualizar_mensaje(f["clave"], **campos)
+            self._dormir_corto()
+        if filas:
+            log.info("Seguimiento: %d anuncios comprobados, %d cambios", len(filas), cambios)
+
+    def _actualizar_indices(self) -> None:
+        if not self.avisador.con_grupo:
+            return
+        for categoria in avisos.CATEGORIAS:
+            filas = self.estado.mensajes_categoria(categoria, self.cfg.dias_seguimiento)
+            if filas or self.estado.leer(f"indice:{self.avisador.grupo_id}:{categoria}"):
+                self.avisador.indice(categoria, avisos.construir_indice(
+                    categoria, filas, self.cfg.dias_seguimiento))
+
+    def _estrenar_grupo(self) -> None:
+        """La primera vez que se usa un grupo, vuelve a mandar lo que sigue publicado."""
+        if not self.avisador.con_grupo:
+            return
+        clave = f"grupo_estrenado:{self.avisador.grupo_id}"
+        if not self.estado.leer(clave):
+            self.estado.olvidar_avisos()
+            self.estado.guardar(clave, "1")
+            log.info("Grupo nuevo: reenvío las ofertas que siguen publicadas")
 
     def _vigilar_salud(self, fuente: str, fallo: str | None) -> None:
         """Si una fuente lleva muchos fallos seguidos te lo dice (una vez), y cuando vuelve."""
@@ -115,6 +176,10 @@ class Motor:
             txt = (f"⚠️ {fuente} lleva {FALLOS_PARA_AVISAR} intentos seguidos fallando ({fallo}). "
                    "Puede que hayan cambiado su web o te estén bloqueando; sigo reintentando.")
             self._mandar(avisos.Aviso(html=txt, texto=txt))
+
+    def _dormir_corto(self) -> None:
+        if self.pausa[1] > 0:
+            time.sleep(random.uniform(0.8, 1.6))
 
     def _dormir(self) -> None:
         if self.pausa[1] > 0:
@@ -205,6 +270,14 @@ class Motor:
             motivo = ""
         if not oferton and not self.cfg.avisar_todas:
             return Veredicto(False)
+        if oferton:
+            categoria = "oferton"
+        elif a.nuevo:
+            categoria = "buen_precio"          # chollo de tienda por debajo del PVP
+        elif fiable:
+            categoria = "buen_precio" if a.precio <= mediana else "resto"
+        else:
+            categoria = "buen_precio" if pmax is not None and a.precio <= pmax * 1.15 else "resto"
 
         avisado = previo.get("avisado_precio") if previo else None
         if avisado is not None:
@@ -213,7 +286,8 @@ class Motor:
             motivo = f"Ha bajado de {euros(avisado)} a {euros(a.precio)}. {motivo}"
 
         return Veredicto(True, motivo, mediana if fiable else None, n,
-                         sospechoso=bool(fiable and a.precio < mediana * 0.5), oferton=oferton)
+                         sospechoso=bool(fiable and a.precio < mediana * 0.5), oferton=oferton,
+                         categoria=categoria)
 
     def procesar_tienda(self, t, prod: Producto, info: dict) -> None:
         precio, en_stock = info.get("precio"), info.get("en_stock")
@@ -238,7 +312,9 @@ class Motor:
         self.estado.guardar_stock(t.url, en_stock, precio, avisado)
         log.info("%s · %s: %s, stock=%s", t.nombre, prod.nombre, euros(precio), en_stock)
         if motivo:
-            self._mandar(avisos.formatear(a, prod.nombre, motivo, oferton=buen_precio))
+            aviso = avisos.formatear(a, prod.nombre, motivo, categoria="oferton" if buen_precio else "resto")
+            if self.avisador.enviar_oferta(aviso, "oferton" if buen_precio else "resto") is not None:
+                self.avisos_enviados += 1
 
     def _mandar(self, aviso: avisos.Aviso) -> bool:
         ok = self.avisador.enviar(aviso)

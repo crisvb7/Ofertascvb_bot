@@ -119,7 +119,37 @@ def a_anuncio(it: dict) -> Anuncio | None:
         lon=numero(loc.get("longitude")) if isinstance(loc, dict) else None,
         envio=bool(envio) if envio is not None else None,
         reservado=bool(reservado),
+        publicado=_segundos(it.get("created_at") or it.get("modified_at")),
     )
+
+
+def _segundos(valor) -> float | None:
+    n = numero(valor)
+    if n is None:
+        return None
+    return n / 1000 if n > 1e11 else n      # Wallapop da milisegundos
+
+
+def estado(sesion, item_id: str) -> tuple[str, float | None]:
+    """('vendida', None) si el anuncio ya no existe; ('disponible'|'reservada', precio) si sigue."""
+    r = sesion.get(f"https://api.wallapop.com/api/v3/items/{item_id}", headers=CABECERAS, timeout=20)
+    if r.status_code in (404, 410):
+        return "vendida", None
+    if r.status_code in (401, 403, 429):
+        raise Bloqueado(f"Wallapop (detalle) respondió {r.status_code}")
+    r.raise_for_status()
+    d = r.json() or {}
+    precio = d.get("price")
+    if isinstance(precio, dict):
+        precio = (precio.get("cash") or precio).get("amount")
+    reservado = d.get("reserved")
+    if isinstance(reservado, dict):
+        reservado = reservado.get("flag")
+    if reservado is None:
+        reservado = (d.get("flags") or {}).get("reserved")
+    if (d.get("flags") or {}).get("sold") or d.get("sold"):
+        return "vendida", parsear_precio(precio)
+    return ("reservada" if reservado else "disponible"), parsear_precio(precio)
 
 
 def _imagen(it: dict) -> str | None:

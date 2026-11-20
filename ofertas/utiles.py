@@ -74,6 +74,26 @@ def distancia_km(lat1, lon1, lat2, lon2) -> float:
     return 2 * r * math.asin(math.sqrt(a))
 
 
+def hora_local(ts: float | None, ahora: float | None = None) -> str:
+    """'hoy 08:23', 'ayer 21:10' o '18/11 10:00' en hora de Madrid."""
+    if not ts:
+        return "¿?"
+    import time as _time
+    from datetime import datetime, timedelta, timezone
+    try:
+        from zoneinfo import ZoneInfo
+        zona = ZoneInfo("Europe/Madrid")
+    except Exception:  # pragma: no cover
+        zona = timezone.utc
+    t = datetime.fromtimestamp(ts, zona)
+    hoy = datetime.fromtimestamp(ahora or _time.time(), zona).date()
+    if t.date() == hoy:
+        return f"hoy {t:%H:%M}"
+    if t.date() == hoy - timedelta(days=1):
+        return f"ayer {t:%H:%M}"
+    return f"{t:%d/%m %H:%M}"
+
+
 def euros(valor: float | None) -> str:
     """549.0 -> '549 €'; 1299.9 -> '1.299,90 €'."""
     if valor is None:

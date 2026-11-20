@@ -24,6 +24,7 @@ class Anuncio:
     en_stock: bool | None = None
     estado: str | None = None   # estado de conservación (Vinted)
     precio_total: float | None = None  # precio con la protección al comprador (Vinted)
+    publicado: float | None = None     # epoch (segundos) en que se publicó
 
     @property
     def clave(self) -> str:

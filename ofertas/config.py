@@ -64,6 +64,10 @@ class Config:
     bajada_minima: float = 10
     avisar_todas: bool = True           # False = solo ofertones
     max_por_pasada: int | None = 25     # mensajes como mucho por pasada
+    comprobar_estado: bool = True       # revisar si los anuncios avisados siguen disponibles
+    dias_seguimiento: float = 3         # cuántos días se siguen e indexan los avisos
+    telegram_grupo_id: str | None = None
+    telegram_temas: dict = field(default_factory=dict)
     intervalos: dict = field(default_factory=dict)
     fuentes: dict = field(default_factory=dict)
     feeds_chollometro: list[str] = field(default_factory=list)
@@ -134,6 +138,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
     ubic = datos.get("ubicacion") or {}
     merc = datos.get("mercado") or {}
     av = datos.get("avisos") or {}
+    tg = datos.get("telegram") or {}
     env = os.environ.get
     return Config(
         productos=productos,
@@ -148,6 +153,10 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
         bajada_minima=float(merc.get("bajada_minima_euros", 10)),
         avisar_todas=bool(av.get("todas", True)),
         max_por_pasada=av.get("max_por_pasada", 25) or None,
+        comprobar_estado=bool(av.get("comprobar_estado", True)),
+        dias_seguimiento=float(av.get("dias_seguimiento", 3)),
+        telegram_grupo_id=str(env("TELEGRAM_GRUPO_ID") or tg.get("grupo_id") or "") or None,
+        telegram_temas={k: v for k, v in (tg.get("temas") or {}).items() if v},
         intervalos={"wallapop": 5, "vinted": 10, "chollometro": 10, "tiendas": 30,
                     **(datos.get("intervalos_min") or {})},
         fuentes=datos.get("fuentes") or {},

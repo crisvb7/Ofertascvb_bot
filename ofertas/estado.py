@@ -22,6 +22,15 @@ CREATE TABLE IF NOT EXISTS stock (
     en_stock INTEGER, precio REAL, actualizado REAL, avisado_precio REAL
 );
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS mensajes (
+    clave TEXT PRIMARY KEY,
+    fuente TEXT, item_id TEXT, producto TEXT, categoria TEXT,
+    chat_id TEXT, message_id INTEGER, con_foto INTEGER, html TEXT,
+    precio REAL, titulo TEXT, url TEXT, ciudad TEXT,
+    publicado REAL, enviado REAL, comprobado REAL,
+    estado TEXT DEFAULT 'disponible'
+);
+CREATE INDEX IF NOT EXISTS idx_mensajes ON mensajes(categoria, enviado);
 """
 
 
@@ -94,6 +103,48 @@ class Estado:
             (url, None if en_stock is None else int(en_stock), precio, time.time(), avisado_precio))
         self.db.commit()
 
+    # --- mensajes enviados (para actualizarlos) --------------------------
+    def mensaje(self, clave: str) -> dict | None:
+        fila = self.db.execute("SELECT * FROM mensajes WHERE clave=?", (clave,)).fetchone()
+        return dict(fila) if fila else None
+
+    def guardar_mensaje(self, a, item_id: str, producto: str, categoria: str, ref: dict | None,
+                        html: str) -> None:
+        ref = ref or {}
+        ahora = time.time()
+        self.db.execute(
+            "INSERT OR REPLACE INTO mensajes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'disponible')",
+            (a.clave, a.fuente, item_id, producto, categoria, ref.get("chat_id"), ref.get("message_id"),
+             int(bool(ref.get("con_foto"))), html, a.precio, a.titulo, a.url, a.ciudad,
+             a.publicado or ahora, ahora, ahora))
+        self.db.commit()
+
+    def actualizar_mensaje(self, clave: str, **campos) -> None:
+        if not campos:
+            return
+        sets = ", ".join(f"{k}=?" for k in campos)
+        self.db.execute(f"UPDATE mensajes SET {sets} WHERE clave=?", (*campos.values(), clave))
+        self.db.commit()
+
+    def mensajes_a_comprobar(self, fuente: str, dias: float, cada_min: float, limite: int) -> list[dict]:
+        ahora = time.time()
+        filas = self.db.execute(
+            "SELECT * FROM mensajes WHERE fuente=? AND estado!='vendida' AND enviado>=? "
+            "AND comprobado<=? ORDER BY comprobado LIMIT ?",
+            (fuente, ahora - dias * 86400, ahora - cada_min * 60, limite)).fetchall()
+        return [dict(f) for f in filas]
+
+    def mensajes_categoria(self, categoria: str, dias: float) -> list[dict]:
+        filas = self.db.execute(
+            "SELECT * FROM mensajes WHERE categoria=? AND enviado>=? ORDER BY publicado DESC",
+            (categoria, time.time() - dias * 86400)).fetchall()
+        return [dict(f) for f in filas]
+
+    def olvidar_avisos(self) -> None:
+        """Hace que los anuncios vuelvan a enviarse (p. ej. al estrenar el grupo)."""
+        self.db.execute("UPDATE anuncios SET avisado_precio=NULL")
+        self.db.commit()
+
     # --- varios ---------------------------------------------------------
     def leer(self, clave: str, defecto: str | None = None) -> str | None:
         fila = self.db.execute("SELECT v FROM meta WHERE k=?", (clave,)).fetchone()
@@ -111,5 +162,7 @@ class Estado:
         self.db.commit()
 
     def purgar(self, dias: int = 60) -> None:
-        self.db.execute("DELETE FROM anuncios WHERE visto_ultima < ?", (time.time() - dias * 86400,))
+        limite = time.time() - dias * 86400
+        self.db.execute("DELETE FROM anuncios WHERE visto_ultima < ?", (limite,))
+        self.db.execute("DELETE FROM mensajes WHERE enviado < ?", (limite,))
         self.db.commit()

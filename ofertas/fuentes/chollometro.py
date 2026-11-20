@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import re
+from email.utils import parsedate_to_datetime
 import xml.etree.ElementTree as ET
 
 from ..modelos import Anuncio
@@ -42,6 +43,10 @@ def parsear(xml: bytes | str) -> list[Anuncio]:
         precio = parsear_precio(precio_txt) if precio_txt else precio_en_texto(titulo)
         desc = html.unescape(_ETIQUETAS.sub(" ", item.findtext("description") or ""))
         m = _ID.search(link)
+        try:
+            publicado = parsedate_to_datetime(item.findtext("pubDate") or "").timestamp()
+        except (TypeError, ValueError):
+            publicado = None
         anuncios.append(Anuncio(
             fuente="chollometro",
             id=m.group(1) if m else guid,
@@ -52,5 +57,6 @@ def parsear(xml: bytes | str) -> list[Anuncio]:
             descripcion=" ".join(desc.split())[:500],
             imagen=imagen,
             tienda=tienda,
+            publicado=publicado,
         ))
     return anuncios

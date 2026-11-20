@@ -23,6 +23,15 @@ mercado:
 avisos:
   todas: true            # true = también las que pasan de tu máximo; false = solo ofertones
   max_por_pasada: 25     # mensajes como mucho en cada pasada (si hay más, siguen en la próxima)
+  comprobar_estado: true # vuelve a mirar los anuncios avisados y marca ❌ los vendidos/retirados
+  dias_seguimiento: 3    # días que se siguen los anuncios y salen en el índice de cada tema
+
+# Grupo de Telegram con temas (🔥 Ofertones, 💰 Buen precio, 🏷️ Resto).
+# Si pones aquí el id del grupo (empieza por -100), las ofertas van al grupo, cada una a su tema.
+# El bot crea los temas solo; los mensajes del sistema siguen yendo a tu chat privado.
+telegram:
+  grupo_id:
+  temas: {}              # opcional: ids de temas ya creados, p. ej. {oferton: 3, buen_precio: 5, resto: 7}
 
 # Cada cuánto se mira cada sitio (minutos). No lo bajes mucho o te bloquearán.
 # En GitHub Actions el bot no puede ir más rápido que el cron de .github/workflows/bot.yml.
