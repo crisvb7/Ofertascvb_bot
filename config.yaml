@@ -1,0 +1,126 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Bot de ofertas de consolas · configuración
+#  Los tokens de Telegram/WhatsApp van en el archivo .env, no aquí.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Tu ubicación, para Wallapop (Oviedo por defecto).
+ubicacion:
+  lat: 43.3614
+  lon: -5.8494
+  radio_km: 120          # más lejos de esto solo avisa si el vendedor hace envíos
+  aceptar_envio: true
+
+# Qué cuenta como "buena oferta" además de tu precio máximo.
+mercado:
+  dias: 14                 # ventana para calcular la mediana de segunda mano
+  muestras_minimas: 12     # anuncios mínimos antes de fiarse de la mediana
+  descuento_minimo: 0.20   # avisa también si está un 20 % por debajo de la mediana
+  bajada_minima_euros: 10  # vuelve a avisar de un anuncio ya avisado si baja al menos esto
+
+# Cada cuánto se mira cada sitio (minutos). No lo bajes mucho o te bloquearán.
+# En GitHub Actions el bot no puede ir más rápido que el cron de .github/workflows/bot.yml.
+intervalos_min:
+  wallapop: 5
+  vinted: 10
+  chollometro: 10
+  tiendas: 30
+
+fuentes:
+  wallapop: true
+  vinted: true
+  chollometro: true    # chollos de tiendas oficiales (Amazon, MediaMarkt, PcComponentes...)
+  tiendas: true        # fichas concretas de la lista "tiendas" de abajo
+
+chollometro_feeds:
+  - https://www.chollometro.com/rss/nuevos
+
+# Palabras que descartan un anuncio si aparecen en el TÍTULO (expresiones regulares,
+# se comparan en minúsculas y sin tildes). Los accesorios baratos ya los quita el
+# precio mínimo; esto es para lo que se cuela por precio.
+excluir_comun:
+  - '\bbusco\b'
+  - '\bcompro\b'
+  - '\bse busca\b'
+  - '\balquil'
+  - '\brepar'
+  - '\bcaja vacia\b'
+  - '\bsolo (la )?caja\b'
+  - '\bpara piezas\b'
+  - '\bdespiece\b'
+  - '\baveriad[ao]s?\b'
+  - '\bno funciona'
+  - '\bno enciende\b'
+  - '\bbaneada\b'
+  - '\bfundas?\b'
+  - '\bsoporte\b'
+  - '\bskins?\b'
+  - '\bvinilos?\b'
+  - '\bpegatinas?\b'
+  - '\bcarcasas?\b'
+  - '\btapas?\b'
+  - '\bfaceplates?\b'
+  - '\bbase de carga\b'
+  - '\bestacion de carga\b'
+  - '\bcargador\b'
+  - '\bventilador'
+  - '\bvolante\b'
+  - '\bauriculares\b'
+  - '\bcascos\b'
+  - '\bmonitor\b'
+  - '\bmueble\b'
+
+# Lo mismo, pero buscando en la DESCRIPCIÓN del anuncio.
+excluir_descripcion_comun:
+  - 'caja vacia'
+  - 'solo (vendo )?la caja'
+  - 'para piezas'
+  - 'despiece'
+  - 'no enciende'
+  - 'baneada'
+  - 'no lee (los )?discos'
+
+productos:
+  # PVP actual en España: 649,99 € con lector, 599,99 € Digital.
+  - nombre: PS5
+    busquedas: ["ps5", "playstation 5"]
+    incluir: ['\bps\s?5\b', 'playstation\s?5', 'play\s?station\s?5', '\bplay\s?5\b']
+    excluir: ['\bpro\b', '\bportal\b', '\bpsvr', '\bvr\s?2?\b', '\bedge\b', '\bpulse\b']
+    segunda_mano:
+      min: 150     # por debajo casi siempre es accesorio, juego o estafa
+      max: 380     # avísame siempre por debajo de esto
+    nuevo:
+      min: 250     # quita juegos, mandos y cuotas "6,50 €/mes"
+      max: 529
+
+  # PVP actual en España: 799,99 € con lector, 749,99 € Digital (y con poco stock).
+  - nombre: Xbox Series X
+    busquedas: ["xbox series x"]
+    incluir: ['series\s?x\b', '\bxsx\b']
+    excluir: ['series\s?s\b', 'series\s?x\s?[|/-]\s?s\b', '\bone\s?[xs]\b', '\belite\b']
+    segunda_mano:
+      min: 200
+      max: 450
+    nuevo:
+      min: 300
+      max: 699
+
+  # ¿También te vale una PS5 Pro? Quita los '#' de este bloque.
+  # - nombre: PS5 Pro
+  #   busquedas: ["ps5 pro"]
+  #   incluir: ['\bps\s?5\s?pro\b', 'playstation\s?5\s?pro']
+  #   excluir: ['\bportal\b', '\bedge\b', '\bmando\b']
+  #   segunda_mano: {min: 300, max: 600}
+  #   nuevo: {min: 450, max: 749}
+
+# Fichas de producto concretas (precio y stock). Pega la URL de la ficha.
+# Útil para la Xbox Series X, que suele estar agotada: te avisa cuando vuelve.
+# Amazon casi siempre bloquea esto: para Amazon usa Keepa o CamelCamelCamel.
+tiendas: []
+#  - producto: Xbox Series X
+#    nombre: MediaMarkt
+#    url: https://www.mediamarkt.es/es/product/...
+#    avisar_stock: true
+#  - producto: PS5
+#    nombre: El Corte Inglés
+#    url: https://www.elcorteingles.es/videojuegos/...
+#    avisar_stock: false

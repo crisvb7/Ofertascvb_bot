@@ -1,0 +1,9 @@
+services:
+  bot-ofertas:
+    build: .
+    container_name: bot-ofertas
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./datos:/app/datos                    # base de datos (no se pierde al actualizar)
+      - ./config.yaml:/app/config.yaml:ro     # edita config.yaml y haz: docker compose restart
