@@ -7,7 +7,7 @@ on:
     #
     # Cada 10 minutos (repo PÚBLICO: minutos gratis e ilimitados).
     # Si el repo es PRIVADO, usa "*/30 * * * *" para no pasar de 2.000 minutos al mes.
-    - cron: "*/10 * * * *"
+    - cron: "3-59/10 * * * *"
     # Día 1 de cada mes: commit de "latido" para que GitHub no pause el bot por inactividad.
     - cron: "23 5 1 * *"
   workflow_dispatch:
