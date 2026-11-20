@@ -38,6 +38,7 @@ class Veredicto:
     sospechoso: bool = False
     oferton: bool = False
     categoria: str = "resto"          # oferton | buen_precio | resto
+    duda: str = ""                    # por qué no está claro que sea una consola
 
 
 class Motor:
@@ -66,6 +67,7 @@ class Motor:
         antes = self.avisos_enviados
         self.pendientes = []
         self._estrenar_grupo()
+        self._reclasificar_enviados()
         for fuente in FUENTES:
             if not self.cfg.activa(fuente) or (fuente == "tiendas" and not self.cfg.tiendas):
                 continue
@@ -110,9 +112,9 @@ class Motor:
         enviar, resto = (orden[:tope], orden[tope:]) if tope else (orden, [])
         for a, v, dist, producto in enviar:
             aviso = avisos.formatear(a, producto, v.motivo, v.mediana, v.muestras, dist,
-                                     v.sospechoso, categoria=v.categoria)
+                                     v.sospechoso, categoria=v.categoria, duda=v.duda)
             anterior = self.estado.mensaje(a.clave)
-            sec = avisos.seccion(a.nuevo, v.categoria)
+            sec = avisos.seccion(a.nuevo, v.categoria, bool(v.duda))
             ref = self.avisador.enviar_oferta(aviso, sec)
             if ref is None:
                 continue
@@ -162,6 +164,32 @@ class Motor:
         for sec in avisos.CATEGORIAS:
             filas = self.estado.mensajes_categoria(sec, self.cfg.dias_seguimiento)
             self.avisador.indice(sec, avisos.construir_indice(sec, filas, self.cfg.dias_seguimiento))
+
+    def _reclasificar_enviados(self, version: str = "v2") -> None:
+        """Pasa el filtro actual por lo ya enviado: marca 🚫 lo que no era una consola
+        y ❓ lo dudoso (una sola vez por versión del filtro)."""
+        clave = f"reclasificado:{version}"
+        if self.estado.leer(clave):
+            return
+        marcados = 0
+        for f in self.estado.mensajes_recientes(self.cfg.dias_seguimiento):
+            prod = self.cfg.producto(f["producto"] or "")
+            if not prod or f["estado"] == "vendida":
+                continue
+            clase, duda = prod.clasificar(Anuncio(fuente=f["fuente"], id=f["item_id"] or "",
+                                                  titulo=f["titulo"] or "", precio=f["precio"], url=f["url"] or ""))
+            if clase == "consola":
+                continue
+            if clase is None:
+                prefijo = "🚫 <b>NO ES UNA CONSOLA</b> (filtro corregido)"
+                self.estado.actualizar_mensaje(f["clave"], estado="descartada")
+            else:
+                prefijo = f"❓ <b>PUEDE QUE NO SEA UNA CONSOLA</b>: {avisos.html.escape(duda)}"
+            if f.get("message_id"):
+                self.avisador.editar(f, avisos.con_estado(f["html"], prefijo, bool(f["con_foto"])))
+            marcados += 1
+        self.estado.guardar(clave, "1")
+        log.info("Filtro de consolas aplicado a lo ya enviado: %d mensajes marcados", marcados)
 
     def _estrenar_grupo(self) -> None:
         """La primera vez que se usa un grupo, vuelve a mandar lo que sigue publicado."""
@@ -247,8 +275,11 @@ class Motor:
         vistos: set[str] = set()
         n_ofertas = 0
         for a in anuncios:
-            if a.precio is None or a.reservado or not prod.coincide(a):
+            if a.precio is None or a.reservado:
                 continue
+            clase, duda = prod.clasificar(a)
+            if clase is None:
+                continue                   # juego, accesorio, "busco"... o es de otra consola
             if a.clave in vistos:          # la misma consola sale en varias búsquedas
                 continue
             vistos.add(a.clave)
@@ -265,6 +296,7 @@ class Motor:
                     continue
 
             v = self.evaluar(a, prod, previo)
+            v.duda = duda
             if v.avisar:
                 self.pendientes.append((a, v, dist, prod.nombre))
                 n_ofertas += 1

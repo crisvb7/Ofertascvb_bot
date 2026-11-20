@@ -16,52 +16,79 @@ def wp(id_, titulo, precio, lugar=OVIEDO, envio=False, desc="", ciudad="Oviedo",
                    ciudad=ciudad, lat=lugar[0], lon=lugar[1], envio=envio, imagen=img)
 
 
-@pytest.mark.parametrize("titulo,esperado", [
-    ("PS5 Slim con lector", True),
-    ("Playstation 5 digital + 2 mandos", True),
-    ("Play 5 con 3 juegos", True),
-    ("Sony PlayStation 5 825GB edición estándar", True),
-    ("PS5 Pro 2TB", False),
-    ("PlayStation Portal para PS5", False),
-    ("Funda para PS5", False),
-    ("Busco PS5", False),
-    ("PS VR2 para PS5", False),
-    ("Volante G29 PS5/PS4", False),
-    ("Mando DualSense Edge PS5", False),
-    ("PS5 averiada", False),
-    ("Mando DualSense PS5 Edición Grand Theft Auto", False),
-    ("Mando Inalámbrico SCUF Omega para PS5 y PC", False),
-    ("GTA VI Edición Coleccionista PS5", False),
-    ("Juego Astro Bot PS5", False),
-    ("PS5 Slim + GTA VI", True),
-    ("Consola PS5 con mando", True),
-    ("Manette PS5 GTA 6 édition limitée", False),
-    ("Nieuwe GTA 6 controller PlayStation 5", False),
-    ("Cerco PS5", False),
-    ("🎮 Concours pour gagner une PS5 🔥", False),
-    ("Vendo Foto Playstation 5 fat A4", False),
-    ("PlayStation 5 veuillez bien lire la description", False),
-    ("PS5 portable", False),
-    ("Playstation 5 1tb leggi descrizione", False),
-    ("PS5 Slim - Très bon état", True),
-    ("PS5 slim + 2 manettes", True),
-    ("Ps5 Semi Nova", True),
-])
-def test_coincide_ps5(cfg, titulo, esperado):
-    assert cfg.producto("PS5").coincide(wp("1", titulo, 300)) is esperado
+C, D, F = "consola", "dudosa", None
 
 
 @pytest.mark.parametrize("titulo,esperado", [
-    ("Xbox Series X 1TB", True),
-    ("Xbox series X digital blanca", True),
-    ("XSX con mando y juegos", True),
-    ("Xbox Series S 512GB", False),
-    ("Forza Horizon Xbox Series X|S", False),
-    ("Mando Elite Series 2 Xbox Series X", False),
-    ("Xbox One X 1TB", False),
+    ("PS5 Slim con lector", C),
+    ("Playstation 5 digital + 2 mandos", C),
+    ("Play 5 con 3 juegos", C),
+    ("Sony PlayStation 5 825GB edición estándar", C),
+    ("PS5 normal", C),
+    ("Play station 5", C),
+    ("PS5 Slim + GTA VI", C),
+    ("Consola PS5 con mando", C),
+    ("PS5 Slim - Très bon état", C),
+    ("PS5 slim + 2 manettes", C),
+    ("Ps5 Semi Nova", C),
+    ("Ps5 slim 1Tb joystick", C),
+    ("PlayStation 5 FAT Disco 825GB FW 13.60 + Pad Hall", C),
+    ("PS5 (PlayStation 5) 825GB + Mando + Auriculares", C),
+    ("PS5 FAT con lector + cambio Xbox Series X", C),
+    ("PS5 slim acepto cambios", C),
+    ("Consola PlayStation 5 Estándar 1TB E con Marvel Lobezno y Marvel's Spider-Man 2", C),
+    # dudosas: te llegan al tema Revisar
+    ("PS5 averiada", D),
+    ("PlayStation 5 (safe mode)", D),
+    ("PlayStation 5/GTA VI", D),
+    ("Nieuwe GTA 6 controller PlayStation 5", D),
+    ("PlayStation 5 veuillez bien lire la description", D),
+    ("PlayStation 5 veuillez lire annonce", D),
+    ("Playstation 5 1tb leggi descrizione", D),
+    ("Mando DualSense + consola PS5 slim", D),
+    # fuera
+    ("PS5 Pro 2TB", F),
+    ("PlayStation Portal para PS5", F),
+    ("Funda para PS5", F),
+    ("Busco PS5", F),
+    ("PS VR2 para PS5", F),
+    ("Volante G29 PS5/PS4", F),
+    ("Volant ps5", F),
+    ("Volant Thrustmaster T598 Direct Drive + pédales PS5/PC", F),
+    ("Mando DualSense Edge PS5", F),
+    ("Mando DualSense PS5 Edición Grand Theft Auto", F),
+    ("Control DualSense Grand Theft Auto VI Nuevo", F),
+    ("Mando Inalámbrico SCUF Omega para PS5 y PC", F),
+    ("GTA VI Edición Coleccionista PS5", F),
+    ("Juego Astro Bot PS5", F),
+    ("Manette PS5 GTA 6 édition limitée", F),
+    ("Cerco PS5", F),
+    ("🎮 Concours pour gagner une PS5 🔥", F),
+    ("Vendo Foto Playstation 5 fat A4", F),
+    ("PS5 portable", F),
+    ("Unidad de disco para consolas PlayStation 5 Edición Digital Slim", F),
+    ("Cambio PlayStation 5 Pro por Xbox series x +400€", F),
 ])
-def test_coincide_xbox(cfg, titulo, esperado):
-    assert cfg.producto("Xbox Series X").coincide(wp("1", titulo, 300)) is esperado
+def test_clasifica_ps5(cfg, titulo, esperado):
+    assert cfg.producto("PS5").clasificar(wp("1", titulo, 300))[0] == esperado
+
+
+@pytest.mark.parametrize("titulo,esperado", [
+    ("Xbox Series X 1TB", C),
+    ("Xbox series X digital blanca", C),
+    ("XSX con mando y juegos", C),
+    ("Xbox Series X 1TO avec manette", C),
+    ("Xbox Séries X", C),
+    ("Xbox Series X + Controller a elegir", C),
+    ("Cambio Xbox Series X por PS5", D),
+    ("Xbox Series S 512GB", F),
+    ("Forza Horizon Xbox Series X|S", F),
+    ("Mando Elite Series 2 Xbox Series X", F),
+    ("Xbox One X 1TB", F),
+    ("PS5 FAT con lector + cambio Xbox Series X", F),     # es una PS5
+])
+def test_clasifica_xbox(cfg, titulo, esperado):
+    assert cfg.producto("Xbox Series X").clasificar(wp("1", titulo, 300))[0] == esperado
 
 
 def test_descripcion_excluye(cfg):

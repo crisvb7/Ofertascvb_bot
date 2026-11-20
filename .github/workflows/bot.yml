@@ -78,7 +78,7 @@ jobs:
           case "$ACCION" in
             prueba)      python bot.py --prueba ;;
             diagnostico) python bot.py --diagnostico ;;
-            simular)     SONDA_TAXONOMIA=1 python bot.py --simular ;;
+            simular)     python bot.py --simular ;;
             pasada)      python bot.py --una-vez ;;
             *)           python bot.py --minutos "$MINUTOS" ;;
           esac

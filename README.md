@@ -18,8 +18,14 @@ más cara:
 - Si una tienda que vigilas **vuelve a tener stock** (útil para la Xbox Series X, que va escasa).
 - Como mucho 25 mensajes por pasada (`avisos.max_por_pasada`); si hay más, siguen en la siguiente.
 
-Descarta mandos, juegos, fundas, cajas vacías, "busco PS5", PS5 Pro, PS Portal, Series S, consolas
-averiadas, anuncios reservados y los de fuera de tu radio sin envío. Si algo está sospechosamente barato
+**Solo consolas.** Cada anuncio se clasifica por su título (en varios idiomas, porque Vinted enseña
+anuncios de toda Europa):
+- ✅ **Consola** ("PS5 Slim 1TB", "Xbox Series X + 2 mandos"…) → a su tema.
+- 🚫 **Fuera** si empieza por un accesorio o un juego ("Mando DualSense…", "Volant ps5", "Juego GTA…"),
+  o si es "busco", PS5 Pro, PS Portal, Series S, una foto o la caja vacía.
+- ❓ **Dudosa** → tema **Revisar**, con el motivo: menciona un juego o accesorio sin decir que sea la
+  consola, habla de cambio, de avería o "modo seguro", o pide leer el anuncio. Así no se salta ninguna.
+También descarta los anuncios reservados y los de fuera de tu radio sin envío. Si algo está sospechosamente barato
 (menos de la mitad de la mediana) te lo marca como posible estafa.
 
 ---

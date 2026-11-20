@@ -26,22 +26,47 @@ class Producto:
     tope: float | None = None           # por encima de esto no avisa nunca
     accesorios: list[re.Pattern] = field(default_factory=list)
     pistas_consola: list[re.Pattern] = field(default_factory=list)
+    dudas: list[re.Pattern] = field(default_factory=list)
+    otros_productos: list[re.Pattern] = field(default_factory=list)   # "incluir" del resto de productos
 
-    def coincide(self, a: Anuncio) -> bool:
-        """¿El anuncio es de verdad esta consola (y no un mando, un juego, una funda...)?"""
+    def clasificar(self, a: Anuncio) -> tuple[str | None, str]:
+        """('consola', '') si es esta consola; ('dudosa', motivo) si no está claro; (None, '') si no.
+
+        Ante la duda se manda (marcada para revisar) en vez de saltársela."""
         t = normalizar(a.titulo)
-        if not any(p.search(t) for p in self.incluir):
-            return False
+        propias = [m.start() for p in self.incluir for m in [p.search(t)] if m]
+        if not propias:
+            return None, ""
         if any(p.search(t) for p in self.excluir):
-            return False
-        # "Manette PS5 GTA 6" fuera; "PS5 Slim + 2 manettes" dentro (dice que es la consola)
-        if any(p.search(t) for p in self.accesorios) and not any(p.search(t) for p in self.pistas_consola):
-            return False
+            return None, ""
+        # "PS5 FAT con lector + cambio Xbox Series X" es una PS5, no una Xbox
+        otras = [m.start() for p in self.otros_productos for m in [p.search(t)] if m]
+        if otras and min(otras) < min(propias):
+            return None, ""
         if self.excluir_descripcion and a.descripcion:
             d = normalizar(a.descripcion)
             if any(p.search(d) for p in self.excluir_descripcion):
-                return False
-        return True
+                return None, ""
+
+        pista = next((m for p in self.pistas_consola for m in [p.search(t)] if m), None)
+        sin_simbolos = re.sub(r"^[^a-z0-9]+", "", t)
+        empieza_acc = next((m for p in self.accesorios for m in [p.match(sin_simbolos)] if m), None)
+        acc = empieza_acc or next((m for p in self.accesorios for m in [p.search(t)] if m), None)
+        duda = next((m for p in self.dudas for m in [p.search(t)] if m), None)
+
+        if empieza_acc:
+            # "Mando DualSense PS5", "Volant ps5", "Juego GTA PS5": un accesorio o un juego
+            if pista:
+                return "dudosa", f"empieza por «{empieza_acc.group(0).strip()}» aunque dice «{pista.group(0).strip()}»"
+            return None, ""
+        if duda:
+            return "dudosa", f"pone «{duda.group(0).strip()}»"
+        if acc and not pista:
+            return "dudosa", f"habla de «{acc.group(0).strip()}» y no dice claramente que sea la consola"
+        return "consola", ""
+
+    def coincide(self, a: Anuncio) -> bool:
+        return self.clasificar(a)[0] is not None
 
     def limites(self, nuevo: bool) -> tuple[float | None, float | None]:
         return (self.nuevo_min, self.nuevo_max) if nuevo else (self.usado_min, self.usado_max)
@@ -116,6 +141,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
     exc_desc = datos.get("excluir_descripcion_comun") or []
     accesorios = _regex(datos.get("accesorios") or [])
     pistas = _regex(datos.get("pistas_consola") or [])
+    dudas = _regex(datos.get("dudas") or [])
 
     productos = []
     for p in datos.get("productos") or []:
@@ -132,9 +158,12 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
             tope=p.get("tope"),
             accesorios=accesorios,
             pistas_consola=pistas,
+            dudas=dudas,
         ))
     if not productos:
         raise ValueError("config.yaml no tiene ningún producto en 'productos'")
+    for p in productos:
+        p.otros_productos = [patron for q in productos if q is not p for patron in q.incluir]
 
     nombres = {p.nombre for p in productos}
     tiendas = []

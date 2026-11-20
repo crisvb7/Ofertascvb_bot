@@ -197,15 +197,45 @@ def test_migracion_de_categorias_antiguas(tmp_path):
 
 
 def test_preparar_temas_crea_los_que_faltan_y_renombra(monkeypatch, estado):
-    crea = [{"ok": True, "result": {"message_thread_id": 20 + i}} for i in range(4)]
+    crea = [{"ok": True, "result": {"message_thread_id": 20 + i}} for i in range(5)]
     # orden de las secciones: nueva_oferton, nueva_buen_precio, usada_oferton (ya existe: renombrar), ...
     respuestas = crea[:2] + [{"ok": True, "result": True}] + crea[2:]
     t = tg(respuestas, monkeypatch)
     av = Avisador([], telegram=t, grupo_id="-100123", estado=estado, temas={"usada_oferton": 3})
     av.preparar_temas()
     metodos = [m for m, _ in t.s.llamadas]
-    assert metodos.count("createForumTopic") == 4 and metodos.count("editForumTopic") == 1
+    assert metodos.count("createForumTopic") == 5 and metodos.count("editForumTopic") == 1
     nombres = [d["name"] for m, d in t.s.llamadas]
     assert "🆕 Nuevas · 🔥 Ofertones" in nombres and "♻️ Segunda mano · 🔥 Ofertones" in nombres
     av.preparar_temas()                                                           # segunda vez: nada
-    assert len(t.s.llamadas) == 5
+    assert len(t.s.llamadas) == 6
+    assert "❓ Revisar · ¿es consola?" in nombres
+
+
+def test_dudosas_van_a_revisar_con_el_motivo(grupo, cfg):
+    motor, av = grupo
+    pasada(motor, [wp("d", "PlayStation 5 (safe mode)", 300), wp("c", "PS5 Slim 1TB", 350),
+                   wp("x", "Volant ps5", 220)], cfg.producto("PS5"))
+    assert sorted(av.categorias) == ["revisar", "usada_oferton"]
+    dudosa = next(a for a, c in zip(av.avisos, av.categorias) if c == "revisar")
+    assert dudosa.texto.startswith("❓ ¿ES UNA CONSOLA? Revísalo tú")
+    assert "🤔 Dudo porque pone «safe mode»" in dudosa.texto
+
+
+def test_reclasifica_lo_ya_enviado(grupo, cfg, estado):
+    motor, av = grupo
+    for clave, titulo in (("a", "Volant ps5"), ("b", "PlayStation 5/GTA VI"), ("c", "PS5 Slim 1TB")):
+        a = wp(clave, titulo, 300)
+        estado.guardar_mensaje(a, clave, "PS5", "usada_oferton",
+                               {"chat_id": "-100123", "message_id": ord(clave), "con_foto": False}, "<b>orig</b>")
+    motor._reclasificar_enviados()
+    ediciones = dict(av.ediciones)
+    assert ediciones[ord("a")].startswith("🚫 <b>NO ES UNA CONSOLA</b>")
+    assert ediciones[ord("b")].startswith("❓ <b>PUEDE QUE NO SEA UNA CONSOLA</b>")
+    assert ord("c") not in ediciones
+    assert estado.mensaje("wallapop:a")["estado"] == "descartada"
+    av.ediciones.clear()
+    motor._reclasificar_enviados()
+    assert av.ediciones == []                     # solo una vez
+    motor._actualizar_indices()
+    assert "Volant" not in av.indices["usada_oferton"]

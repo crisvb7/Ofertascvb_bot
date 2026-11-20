@@ -60,86 +60,62 @@ fuentes:
 chollometro_feeds:
   - https://www.chollometro.com/rss/nuevos
 
-# Palabras que descartan un anuncio si aparecen en el TÍTULO (expresiones regulares,
-# se comparan en minúsculas y sin tildes). Los accesorios baratos ya los quita el
-# precio mínimo; esto es para lo que se cuela por precio.
-excluir_comun:
-  - '\bbusco\b'
-  - '\bcompro\b'
-  - '\bse busca\b'
-  - '\balquil'
-  - '\brepar'
-  - '\bcaja vacia\b'
-  - '\bsolo (la )?caja\b'
-  - '\bpara piezas\b'
-  - '\bdespiece\b'
-  - '\baveriad[ao]s?\b'
-  - '\bno funciona'
-  - '\bno enciende\b'
-  - '\bbaneada\b'
-  - '\bfundas?\b'
-  - '\bsoporte\b'
-  - '\bskins?\b'
-  - '\bvinilos?\b'
-  - '\bpegatinas?\b'
-  - '\bcarcasas?\b'
-  - '\btapas?\b'
-  - '\bfaceplates?\b'
-  - '\bbase de carga\b'
-  - '\bestacion de carga\b'
-  - '\bcargador\b'
-  - '\bventilador'
-  - '\bvolante\b'
-  - '\bauriculares\b'
-  - '\bcascos\b'
-  - '\bmonitor\b'
-  - '\bmueble\b'
-  # títulos que empiezan por un accesorio o un juego ("Mando DualSense PS5...", "Juego GTA PS5...")
-  - '^\W*(mandos?|dualsense|scuf|controller|controlador|gamepad|juegos?|volante|cascos)\b'
-  - '\bscuf\b'
-  - '\bcoleccionista\b'
-  - '\bcollector'
-  - '\bsteelbook\b'
-  # otros idiomas (Vinted enseña anuncios de toda Europa)
-  - '\b(cerco|cherche|recherche|suche|zoek|procuro|looking for)\b'
-  - '\b(concours|concorso|sorteo|giveaway|gewinnspiel)\b'
-  - '\b(foto|photo|poster|affiche)\b'
-  - '\bportable\b'
-  - '\b(lire|lisez|leer|lee|leggere|leggi|ler|leia|read)\b.{0,20}\b(description|descripcion|descrizione|descricao)\b'
-  - '\b(boite vide|scatola vuota|caixa vazia|empty box|leere verpackung)\b'
-  - '\b(hs|en panne|defectueuse|guasta|kaputt|defekt|avariada)\b'
+# ── Qué es una consola ─────────────────────────────────────────────────────────
+# Todo se mira en el TÍTULO, en minúsculas y sin tildes (expresiones regulares).
+# Resultado: ✅ consola → a su tema · ❓ dudosa → tema "Revisar" con el motivo · 🚫 descartada.
 
-# Accesorios en varios idiomas: se descartan SALVO que el título diga que es la consola
-# (p. ej. "PS5 Slim + 2 mandos" sí; "Manette PS5 GTA 6" no).
+# 1) DESCARTAR siempre: no es una consola en venta.
+excluir_comun:
+  - '\b(busco|compro|se busca|cerco|cherche|recherche|suche|zoek|procuro|looking for)\b'
+  - '\balquil'
+  - '\b(reparo|reparamos|reparacion|reparaciones)\b'
+  - '\b(caja vacia|solo (la )?caja|boite vide|scatola vuota|caixa vazia|empty box|leere verpackung)\b'
+  - '\b(concours|concorso|sorteo|giveaway|gewinnspiel)\b'
+  - '\b(foto|photo|poster|affiche|lamina)\b'
+  - '\bportable\b'
+  - '\b(coleccionista|collector|steelbook)'
+  - '^\W*(unidad|lector|lecteur|lettore|laufwerk) de (disco|discos|disque)'   # el lector suelto
+
+# 2) ACCESORIOS Y JUEGOS. Si el título EMPIEZA por uno de estos, se descarta
+#    ("Mando DualSense PS5", "Volant ps5", "Juego GTA PS5"). Si sale en medio y el título no dice
+#    que sea la consola, va a ❓ Revisar ("PlayStation 5/GTA VI").
 accesorios:
-  - '\b(mandos?|manettes?|mannettes?|controllers?|comandos?|joysticks?|dualsense|gamepads?)\b'
-  - '\b(jeux|jeu|juegos?|giochi|gioco|spiele|spiel|jogos?|games?)\b'
-  - '\b(casque|cuffie|headset|kopfhorer)\b'
-  - '\b(chargeur|caricatore|ladestation|charging)\b'
+  - '\b(mandos?|manettes?|mannettes?|controllers?|controles?|controladora?s?|comandos?|joysticks?|joypads?|pads?|dualsense|gamepads?|scuf)\b'
+  - '\b(volantes?|volant|volanti|lenkrad|pedales|pedali|pedals?|thrustmaster|logitech|fanatec|g29|g923|t300|t598|cockpit)\b'
+  - '\b(jeux|jeu|juegos?|videojuegos?|giochi|gioco|spiele|spiel|jogos?|games?)\b'
+  - '\b(gta|grand theft auto|fifa|fc ?2\d|ea sports|call of duty|spider-?man|god of war|astro bot|gran turismo|hogwarts|elden ring|minecraft|red dead|resident evil|mortal kombat|nba 2k\d*|assassin|cyberpunk|last of us|ghost of)\b'
+  - '\b(auriculares|cascos|casque|cuffie|headset|kopfhorer|pulse)\b'
+  - '\b(cargador|chargeur|caricatore|ladestation|charging|base de carga|estacion de carga|dock)\b'
+  - '\b(fundas?|housse|custodia|soporte|support|stand|skins?|vinilos?|pegatinas?|carcasas?|tapas?|faceplates?|cover)\b'
+  - '\b(cables?|hdmi|ssd|nvme|disco duro|tarjeta|camara|camera|ventilador|monitor|mueble|teclado|raton)\b'
+
+# 3) Señales de que SÍ es la consola (pesan más que un accesorio mencionado: "PS5 Slim + 2 mandos").
 pistas_consola:
   - 'consol'
-  - '\b(slim|digital|digitale|numerique|standard|estandar)\b'
+  - '\b(slim|fat|digital|digitale|numerique|standard|estandar|chassis)\b'
   - '\b\d+\s?(tb|to|gb|go)\b'
   - '\b(lector|disco|lecteur|lettore|laufwerk|disc|blu-?ray)\b'
   # packs: "PS5 con 2 mandos", "Xbox + juegos", "PS5 avec manettes"...
-  - '(\+|\b(con|avec|with|mit|com|e|y|und|incluye|inclus|incluso)\b)\s*(\d+\s*)?(mandos?|manettes?|controllers?|comandos?|juegos?|jeux|games?|giochi|spiele|jogos?)\b'
+  - '(\+|\b(con|avec|with|mit|com|e|y|und|incluye|inclus|incluso)\b)\s*(\d+\s*)?(mandos?|manettes?|controllers?|controles?|comandos?|joysticks?|joypads?|pads?|juegos?|jeux|games?|giochi|spiele|jogos?)\b'
 
-# Lo mismo, pero buscando en la DESCRIPCIÓN del anuncio.
+# 4) DUDAS: la consola te llega igual, pero al tema ❓ Revisar, diciendo por qué.
+dudas:
+  - '^\W*(cambio|intercambio|echange|scambio|tausch|troca)\b'
+  - '\b(cambio|intercambio|echange|scambio|tausch|troca)\s+(por|x|pour|per|gegen|for)\b'
+  - '\b(averiad[ao]s?|no funciona|no enciende|para piezas|despiece|baneada|safe mode|modo seguro|en panne|defectueuse|guasta|kaputt|defekt|avariada|hs)\b'
+  - '\b(lire|lisez|leer|lee|leggere|leggi|ler|leia|read)\b.{0,20}\b(annonce|anuncio|annuncio|description|descripcion|descrizione|descricao)\b'
+
+# Lo mismo en la DESCRIPCIÓN: descartar si solo se vende la caja.
 excluir_descripcion_comun:
   - 'caja vacia'
   - 'solo (vendo )?la caja'
-  - 'para piezas'
-  - 'despiece'
-  - 'no enciende'
-  - 'baneada'
-  - 'no lee (los )?discos'
 
 productos:
   # PVP actual en España: 649,99 € con lector, 599,99 € Digital.
   - nombre: PS5
     busquedas: ["ps5", "playstation 5"]
     incluir: ['\bps\s?5\b', 'playstation\s?5', 'play\s?station\s?5', '\bplay\s?5\b']
-    excluir: ['\bpro\b', '\bportal\b', '\bpsvr', '\bvr\s?2?\b', '\bedge\b', '\bpulse\b']
+    excluir: ['\bpro\b', '\bportal\b', '\bpsvr', '\bvr\s?2?\b', '\bedge\b']
     tope: 650      # nunca te manda nada más caro que esto (lo que cuesta nueva)
     segunda_mano:
       min: 150     # por debajo casi siempre es accesorio, juego o estafa

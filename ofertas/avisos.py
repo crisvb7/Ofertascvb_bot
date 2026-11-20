@@ -37,11 +37,15 @@ CATEGORIAS = {
     "usada_oferton": ("♻️ Segunda mano · 🔥 Ofertones", 16478047),
     "usada_buen_precio": ("♻️ Segunda mano · 💰 Buen precio", 16766590),
     "usada_resto": ("♻️ Segunda mano · 🏷️ Resto", 7322096),
+    "revisar": ("❓ Revisar · ¿es consola?", 16749490),
 }
 
 
-def seccion(nuevo: bool, categoria: str) -> str:
-    """'oferton' + nueva -> 'nueva_oferton'. Las nuevas no tienen 'resto' (pasan del tope)."""
+def seccion(nuevo: bool, categoria: str, dudosa: bool = False) -> str:
+    """'oferton' + nueva -> 'nueva_oferton'. Las nuevas no tienen 'resto' (pasan del tope).
+    Lo que no está claro que sea una consola va siempre a 'revisar'."""
+    if dudosa:
+        return "revisar"
     clave = f"{'nueva' if nuevo else 'usada'}_{categoria}"
     if clave in CATEGORIAS:
         return clave
@@ -344,11 +348,14 @@ CABECERAS = {
 
 def formatear(a, producto: str, motivo: str, mediana: float | None = None, muestras: int = 0,
               distancia: float | None = None, sospechoso: bool = False,
-              categoria: str = "resto") -> Aviso:
+              categoria: str = "resto", duda: str = "") -> Aviso:
     e = html.escape
     fuente = ETIQUETA_FUENTE.get(a.fuente, a.fuente)
     tipo = "nueva" if a.nuevo else "segunda mano"
     h, t = [], []
+    if duda:
+        h.append("❓ <b>¿ES UNA CONSOLA?</b> Revísalo tú")
+        t.append("❓ ¿ES UNA CONSOLA? Revísalo tú")
     if categoria in CABECERAS:
         h.append(CABECERAS[categoria][0])
         t.append(CABECERAS[categoria][1])
@@ -387,6 +394,9 @@ def formatear(a, producto: str, motivo: str, mediana: float | None = None, muest
         icono_motivo = "✅" if categoria == "oferton" else "ℹ️"
         h.append(f"{icono_motivo} {e(motivo)}")
         t.append(f"{icono_motivo} {motivo}")
+    if duda:
+        h.append(f"🤔 Dudo porque {e(duda)}")
+        t.append(f"🤔 Dudo porque {duda}")
     if sospechoso:
         aviso = "⚠️ Muy por debajo del mercado: puede ser estafa. Paga solo dentro de la plataforma."
         h.append(e(aviso))
@@ -429,6 +439,7 @@ def construir_indice(categoria: str, filas: list[dict], dias: float, max_disponi
     nombre = CATEGORIAS.get(categoria, CATEGORIAS["usada_resto"])[0]
     cab = [f"📌 <b>{nombre}</b> · lo más nuevo arriba",
            f"<i>Actualizado {hora_local(time.time())} · últimos {dias:g} días</i>", ""]
+    filas = [f for f in filas if f["estado"] != "descartada"]
     disponibles = [f for f in filas if f["estado"] != "vendida"]
     vendidas = [f for f in filas if f["estado"] == "vendida"]
     cuerpo = []

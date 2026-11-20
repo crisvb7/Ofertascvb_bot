@@ -146,9 +146,14 @@ class Estado:
     def mensajes_a_comprobar(self, fuente: str, dias: float, cada_min: float, limite: int) -> list[dict]:
         ahora = time.time()
         filas = self.db.execute(
-            "SELECT * FROM mensajes WHERE fuente=? AND estado!='vendida' AND enviado>=? "
+            "SELECT * FROM mensajes WHERE fuente=? AND estado NOT IN ('vendida','descartada') AND enviado>=? "
             "AND comprobado<=? ORDER BY comprobado LIMIT ?",
             (fuente, ahora - dias * 86400, ahora - cada_min * 60, limite)).fetchall()
+        return [dict(f) for f in filas]
+
+    def mensajes_recientes(self, dias: float) -> list[dict]:
+        filas = self.db.execute("SELECT * FROM mensajes WHERE enviado>=? AND estado!='descartada'",
+                                (time.time() - dias * 86400,)).fetchall()
         return [dict(f) for f in filas]
 
     def mensajes_categoria(self, categoria: str, dias: float) -> list[dict]:
