@@ -132,6 +132,14 @@ class Telegram:
         log.warning("Telegram no ha editado el mensaje: %s", j.get("description"))
         return None
 
+    def borrar(self, chat_id: str, message_id: int) -> bool:
+        """True = borrado (o ya no existía); False = Telegram no deja (p. ej. tiene más de 48 h)."""
+        j = self._llamar("deleteMessage", {"chat_id": chat_id, "message_id": int(message_id)}, chat_id)
+        if j.get("ok") or "not found" in (j.get("description") or "").lower():
+            return True
+        log.info("Telegram no deja borrar el mensaje %s: %s", message_id, j.get("description"))
+        return False
+
     def renombrar_tema(self, chat_id: str, thread_id: int, nombre: str) -> bool:
         j = self._llamar("editForumTopic", {"chat_id": chat_id, "message_thread_id": int(thread_id),
                                             "name": nombre}, chat_id)
@@ -256,6 +264,15 @@ class Avisador:
         except Exception as e:
             log.error("Error editando en Telegram: %s", e)
             return None
+
+    def borrar(self, ref: dict | None) -> bool:
+        if not (self.telegram and ref and ref.get("message_id") and ref.get("chat_id")):
+            return False
+        try:
+            return self.telegram.borrar(ref["chat_id"], ref["message_id"])
+        except Exception as e:
+            log.error("Error borrando en Telegram: %s", e)
+            return False
 
     def tema(self, categoria: str) -> int | None:
         if not self.con_grupo:

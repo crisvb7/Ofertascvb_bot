@@ -211,6 +211,7 @@ Todo está en `config.yaml`, con comentarios:
 |---|---|---|
 | Máximo PS5 segunda mano / nueva | `productos → PS5` | 420 € / 529 € |
 | Máximo Xbox Series X segunda mano / nueva | `productos → Xbox Series X` | 420 € / 699 € |
+| Precio mínimo (por debajo se ignora: precios ridículos, accesorios, estafas) | `productos → … → min` | 300 € en todo |
 | Descuento frente a la mediana | `mercado.descuento_minimo` | 20 % |
 | Radio en Wallapop (desde Oviedo) | `ubicacion.radio_km` | 120 km (o cualquier distancia con envío) |
 | Frecuencia (opción B y C) | `intervalos_min` | Wallapop 5 min, Vinted y Chollometro 10, tiendas 30 |

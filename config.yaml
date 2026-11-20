@@ -124,10 +124,10 @@ productos:
     excluir: ['\bpro\b', '\bportal\b', '\bpsvr', '\bvr\s?2?\b', '\bedge\b']
     tope: 650      # nunca te manda nada más caro que esto (lo que cuesta nueva)
     segunda_mano:
-      min: 150     # por debajo casi siempre es accesorio, juego o estafa
+      min: 300     # por debajo es un precio ridículo: accesorio, juego, averiada o estafa
       max: 420     # por debajo de esto = 🔥 OFERTÓN
     nuevo:
-      min: 250     # quita juegos, mandos y cuotas "6,50 €/mes"
+      min: 300     # quita juegos, mandos, cuotas "6,50 €/mes" y precios irreales
       max: 529
 
   # PVP actual en España: 799,99 € con lector, 749,99 € Digital (y con poco stock).
@@ -137,7 +137,7 @@ productos:
     excluir: ['series\s?s\b', 'series\s?x\s?[|/-]\s?s\b', '\bone\s?[xs]\b', '\belite\b']
     tope: 800      # nunca te manda nada más caro que esto (lo que cuesta nueva)
     segunda_mano:
-      min: 200
+      min: 300     # por debajo es un precio ridículo
       max: 420
     nuevo:
       min: 300

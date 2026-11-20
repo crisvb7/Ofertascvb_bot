@@ -239,3 +239,47 @@ def test_reclasifica_lo_ya_enviado(grupo, cfg, estado):
     assert av.ediciones == []                     # solo una vez
     motor._actualizar_indices()
     assert "Volant" not in av.indices["usada_oferton"]
+
+
+def test_config_real_no_baja_de_300():
+    from ofertas import config
+    from conftest import RAIZ
+    for p in config.cargar(RAIZ / "config.yaml").productos:
+        assert p.usado_min >= 300 and p.nuevo_min >= 300, p.nombre
+
+
+def test_quita_lo_ya_enviado_por_debajo_del_minimo(grupo, cfg, estado):
+    motor, av = grupo
+    ps5 = cfg.producto("PS5")
+    ps5.usado_min = ps5.nuevo_min = 300
+    filas = (("a", 250, "usada_oferton", 1), ("b", 280, "revisar", 2), ("c", 299, "usada_oferton", 3),
+             ("d", 300, "usada_oferton", 4), ("e", 260, "nueva_oferton", 5))
+    for clave, precio, cat, mid in filas:
+        estado.guardar_mensaje(wp(clave, "PS5 Slim 1TB", precio), clave, "PS5", cat,
+                               {"chat_id": "-100123", "message_id": mid, "con_foto": False}, "<b>orig</b>")
+    av.no_borrables = {3}                          # más de 48 h: Telegram no deja borrarlo
+    motor._quitar_baratos_enviados()
+    assert sorted(av.borrados) == [1, 2, 3, 5]
+    assert [mid for mid, _ in av.ediciones] == [3]
+    assert av.ediciones[0][1].startswith("🚫 <b>PRECIO POR DEBAJO DE 300 €</b>")
+    assert estado.mensaje("wallapop:a")["estado"] == "borrada"
+    assert estado.mensaje("wallapop:c")["estado"] == "descartada"
+    assert estado.mensaje("wallapop:d")["estado"] == "disponible"
+    av.borrados.clear()
+    motor._quitar_baratos_enviados()
+    assert av.borrados == []                       # una sola vez...
+    ps5.usado_min = 310
+    av.ediciones.clear()
+    motor._quitar_baratos_enviados()
+    assert av.borrados == [3, 4]                   # ...salvo que cambies el mínimo
+    assert av.ediciones == []                      # el 3 ya estaba marcado: no se vuelve a editar
+    motor._actualizar_indices()
+    assert "300 €" not in av.indices.get("usada_oferton", "")
+
+
+def test_no_manda_nada_por_debajo_de_300(grupo, cfg):
+    motor, av = grupo
+    ps5 = cfg.producto("PS5")
+    ps5.usado_min = 300
+    pasada(motor, [wp("x", "PS5 Slim 1TB", 299), wp("y", "PS5 Slim 1TB", 300)], ps5)
+    assert len(av.categorias) == 1 and "300 €" in av.avisos[0].texto

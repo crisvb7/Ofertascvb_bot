@@ -1,6 +1,7 @@
 """Bucle principal: consulta cada fuente a su ritmo, decide qué es buena oferta y avisa."""
 from __future__ import annotations
 
+import json
 import logging
 import random
 import time
@@ -68,6 +69,7 @@ class Motor:
         self.pendientes = []
         self._estrenar_grupo()
         self._reclasificar_enviados()
+        self._quitar_baratos_enviados()
         for fuente in FUENTES:
             if not self.cfg.activa(fuente) or (fuente == "tiendas" and not self.cfg.tiendas):
                 continue
@@ -190,6 +192,39 @@ class Motor:
             marcados += 1
         self.estado.guardar(clave, "1")
         log.info("Filtro de consolas aplicado a lo ya enviado: %d mensajes marcados", marcados)
+
+    def _quitar_baratos_enviados(self) -> None:
+        """Quita del grupo lo ya enviado por debajo del precio mínimo (se repite si cambias el
+        mínimo). Borra el mensaje; si Telegram no deja (más de 48 h), lo marca 🚫."""
+        minimos = sorted((p.nombre, p.usado_min, p.nuevo_min) for p in self.cfg.productos)
+        clave = "minimos:" + json.dumps(minimos)
+        if self.estado.leer(clave):
+            return
+        borrados = marcados = 0
+        for f in self.estado.mensajes_recientes(self.cfg.dias_seguimiento, con_descartadas=True):
+            prod = self.cfg.producto(f["producto"] or "")
+            if not prod or f["precio"] is None:
+                continue
+            cat = f["categoria"] or ""
+            if cat.startswith("nueva"):
+                pmin = prod.nuevo_min
+            elif cat.startswith("usada"):
+                pmin = prod.usado_min
+            else:                                   # Revisar: no sabemos si es nueva o usada
+                pmin = min((x for x in (prod.usado_min, prod.nuevo_min) if x is not None), default=None)
+            if pmin is None or f["precio"] >= pmin:
+                continue
+            if f.get("message_id") and self.avisador.borrar(f):
+                self.estado.actualizar_mensaje(f["clave"], estado="borrada")
+                borrados += 1
+                continue
+            if f.get("message_id") and f["estado"] != "descartada":
+                prefijo = f"🚫 <b>PRECIO POR DEBAJO DE {pmin:.0f} €</b> (ya no entra en el filtro)"
+                self.avisador.editar(f, avisos.con_estado(f["html"], prefijo, bool(f["con_foto"])))
+                marcados += 1
+            self.estado.actualizar_mensaje(f["clave"], estado="descartada")
+        self.estado.guardar(clave, "1")
+        log.info("Precio mínimo aplicado a lo ya enviado: %d borrados, %d marcados", borrados, marcados)
 
     def _estrenar_grupo(self) -> None:
         """La primera vez que se usa un grupo, vuelve a mandar lo que sigue publicado."""

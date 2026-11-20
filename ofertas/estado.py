@@ -151,14 +151,15 @@ class Estado:
             (fuente, ahora - dias * 86400, ahora - cada_min * 60, limite)).fetchall()
         return [dict(f) for f in filas]
 
-    def mensajes_recientes(self, dias: float) -> list[dict]:
-        filas = self.db.execute("SELECT * FROM mensajes WHERE enviado>=? AND estado!='descartada'",
+    def mensajes_recientes(self, dias: float, con_descartadas: bool = False) -> list[dict]:
+        filtro = "" if con_descartadas else " AND estado!='descartada'"
+        filas = self.db.execute("SELECT * FROM mensajes WHERE enviado>=?" + filtro + " AND estado!='borrada'",
                                 (time.time() - dias * 86400,)).fetchall()
         return [dict(f) for f in filas]
 
     def mensajes_categoria(self, categoria: str, dias: float) -> list[dict]:
         filas = self.db.execute(
-            "SELECT * FROM mensajes WHERE categoria=? AND enviado>=? ORDER BY publicado DESC",
+            "SELECT * FROM mensajes WHERE categoria=? AND enviado>=? AND estado!='borrada' ORDER BY publicado DESC",
             (categoria, time.time() - dias * 86400)).fetchall()
         return [dict(f) for f in filas]
 
