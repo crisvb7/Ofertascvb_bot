@@ -86,6 +86,8 @@ def main() -> int:
                   f"p25 {euros(f['p25']):>9}  mediana {euros(f['mediana']):>9}  máx {euros(f['max']):>9}")
         return 0
 
+    if args.simular:
+        cfg.max_por_pasada = None          # en la simulación se ven todas
     estado = Estado(":memory:" if args.simular else ruta_bd)
     avisador = avisos.crear_avisador(cfg, solo_consola=args.simular, estado=estado)
     pausa = (1.0, 2.5) if args.una_vez else (2.0, 5.0)    # una sola pasada: cuanto más corta mejor

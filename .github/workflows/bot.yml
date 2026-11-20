@@ -27,8 +27,10 @@ on:
         type: string
         default: "55"
 
+# Solo "bucle" y "pasada" comparten grupo (usan la memoria del bot); las pruebas van aparte
+# para no interrumpir ni sustituir a la vuelta que esté esperando.
 concurrency:
-  group: bot-ofertas-${{ github.event.schedule == '23 5 1 * *' && 'latido' || 'bot' }}
+  group: bot-ofertas-${{ github.event.schedule == '23 5 1 * *' && 'latido' || (contains(fromJSON('["prueba","diagnostico","simular"]'), inputs.accion) && inputs.accion) || 'bot' }}
   cancel-in-progress: false
 
 permissions:
@@ -76,7 +78,7 @@ jobs:
           case "$ACCION" in
             prueba)      python bot.py --prueba ;;
             diagnostico) python bot.py --diagnostico ;;
-            simular)     python bot.py --simular ;;
+            simular)     SONDA_TAXONOMIA=1 python bot.py --simular ;;
             pasada)      python bot.py --una-vez ;;
             *)           python bot.py --minutos "$MINUTOS" ;;
           esac

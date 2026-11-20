@@ -1,6 +1,7 @@
 """Wallapop: API interna de búsqueda que usa su propia web (no es pública ni oficial)."""
 from __future__ import annotations
 
+import os
 import random
 import time
 
@@ -41,6 +42,12 @@ def buscar(sesion, consulta: str, lat: float, lon: float,
         datos = r.json()
         global ultima_respuesta
         ultima_respuesta = datos          # para el diagnóstico
+        if os.environ.get("SONDA_TAXONOMIA"):   # TEMPORAL: ver la categoría de cada anuncio
+            import logging
+            for it in extraer_items(datos)[:40]:
+                logging.getLogger("sonda").info("TAX %s | %s | %s | %s", str(it.get("title"))[:50],
+                    it.get("category_id"), str(it.get("taxonomy") or it.get("taxonomies"))[:200],
+                    str(it.get("type_attributes") or it.get("attributes") or "")[:150])
         anuncios += [a for a in map(a_anuncio, extraer_items(datos)) if a]
         siguiente = (datos.get("meta") or {}).get("next_page") if isinstance(datos, dict) else None
         if not siguiente or pagina + 1 >= paginas:
