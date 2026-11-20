@@ -9,6 +9,7 @@ from ..red import Bloqueado
 from ..utiles import numero, parsear_precio
 
 URL_BUSQUEDA = "https://api.wallapop.com/api/v3/search"
+ultima_respuesta = None
 CABECERAS = {
     "Accept": "application/json, text/plain, */*",
     "X-Platform": "web",   # obligatoria: sin ella la API responde 403
@@ -38,6 +39,8 @@ def buscar(sesion, consulta: str, lat: float, lon: float,
             raise Bloqueado(f"Wallapop respondió {r.status_code}")
         r.raise_for_status()
         datos = r.json()
+        global ultima_respuesta
+        ultima_respuesta = datos          # para el diagnóstico
         anuncios += [a for a in map(a_anuncio, extraer_items(datos)) if a]
         siguiente = (datos.get("meta") or {}).get("next_page") if isinstance(datos, dict) else None
         if not siguiente or pagina + 1 >= paginas:

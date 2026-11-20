@@ -12,7 +12,7 @@ from .fuentes import chollometro, tiendas, wallapop
 from .fuentes.vinted import Vinted
 from .modelos import Anuncio
 from .red import ERRORES_RED, MOTOR, Bloqueado, sesion_navegador
-from .utiles import euros
+from .utiles import distancia_km, euros
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,28 @@ def _linea(fuente: str, prod: Producto, recibidos: list[Anuncio]) -> str:
     return txt
 
 
+def _detalle(cfg: Config, prod: Producto, anuncios: list[Anuncio]) -> None:
+    """Escribe en el log los anuncios por debajo del máximo y por qué se avisarían o no."""
+    _, pmax = prod.limites(False)
+    items = wallapop.extraer_items(wallapop.ultima_respuesta or {})
+    if items:
+        muestra = items[0]
+        log.info("Muestra cruda Wallapop: claves=%s", sorted(muestra.keys()))
+        for k in ("shipping", "location", "reserved", "flags", "price"):
+            if k in muestra:
+                log.info("   %s = %s", k, str(muestra[k])[:300])
+    for a in sorted(_validos(anuncios, prod), key=lambda x: x.precio):
+        if pmax is not None and a.precio > pmax:
+            break
+        dist = (distancia_km(cfg.lat, cfg.lon, a.lat, a.lon)
+                if a.lat is not None and a.lon is not None else None)
+        lejos = bool(cfg.radio_km and dist is not None and dist > cfg.radio_km)
+        avisaria = not lejos or (cfg.aceptar_envio and a.envio)
+        log.info("   %s %s | %s | %s | %s km | envío=%s | %s",
+                 "AVISARÍA" if avisaria else "descartado", euros(a.precio), a.titulo[:60],
+                 a.ciudad, f"{dist:.0f}" if dist is not None else "?", a.envio, a.url)
+
+
 def _error(fuente: str, e: Exception) -> str:
     if isinstance(e, Bloqueado):
         return f"❌ {fuente}: me bloquea ({e})"
@@ -58,6 +80,7 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
             try:
                 res = wallapop.buscar(sesion, prod.busquedas[0], cfg.lat, cfg.lon, prod.usado_min)
                 lineas.append(_linea("Wallapop", prod, res))
+                _detalle(cfg, prod, res)
             except Exception as e:
                 lineas.append(_error("Wallapop", e))
                 break
