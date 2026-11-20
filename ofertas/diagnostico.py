@@ -129,9 +129,12 @@ def sonda_wallapop() -> None:
         log.info("Sonda: no hay respuesta de Wallapop guardada")
         return
     it = items[0]
-    log.info("Sonda: created_at=%r modified_at=%r", it.get("created_at"), it.get("modified_at"))
+    reservados = [x for x in items if isinstance(x.get("reserved"), dict) and x["reserved"].get("flag")]
+    log.info("Sonda: created_at=%r modified_at=%r; reservados en la búsqueda: %d de %d",
+             it.get("created_at"), it.get("modified_at"), len(reservados), len(items))
     s = sesion_navegador()
-    for iid in (it.get("id"), "zzzz0000inexistente"):
+    ids = [it.get("id")] + [x.get("id") for x in reservados[:1]]
+    for iid in ids:
         url = f"https://api.wallapop.com/api/v3/items/{iid}"
         try:
             r = s.get(url, headers=wallapop.CABECERAS, timeout=20)
@@ -139,8 +142,8 @@ def sonda_wallapop() -> None:
             if r.status_code < 400:
                 d = r.json()
                 log.info("Sonda: claves=%s", sorted(d.keys()) if isinstance(d, dict) else type(d))
-                for k in ("reserved", "sold", "flags", "status", "is_sold", "bumped", "published",
-                          "created_at", "modified_at", "price", "shipping"):
+                for k in ("reserved", "sold", "flags", "status", "is_sold", "limit_status", "counters",
+                          "type_attributes", "type", "modified_date"):
                     if isinstance(d, dict) and k in d:
                         log.info("Sonda:   %s = %s", k, str(d[k])[:300])
             else:
