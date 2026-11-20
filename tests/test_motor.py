@@ -72,6 +72,7 @@ C, D, F = "consola", "dudosa", None
     ("Vários jogos playstation5 (sealed)", F),
     ("Lot indissociable manette ps5 GTA6", F),
     ("PS5 Controller GTA VI White limited edition", F),
+    ("Sony PS5 DualSense Controller GTA VI 6 Limited Edition - Black & White", F),
     ("PS5 sans manette", C),
     ("Lot console PS5 slim + 2 manettes", D),
     ("PACK PlayStation 5 + mando inalámbrico + EA Sports FC27", C),

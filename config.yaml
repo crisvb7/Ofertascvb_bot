@@ -91,7 +91,7 @@ accesorios:
   # (solo al principio) lotes de juegos o mandos: "Lot de 7 jeux ps5", "Vários jogos playstation5"
   - '^\W*(lot|lote|lotto|lots|varios|varias|plusieurs|several|diversi)\b.{0,25}\b(jeux|jeu|juegos?|jogos?|giochi|games?|manettes?|mandos?|controllers?)\b'
   # (solo al principio) el nombre de la consola seguido de un accesorio: "PS5 Controller GTA VI"
-  - '^\W*(ps\s?5|playstation\s?5|play\s?station\s?5|xbox\s?series\s?x)\s+(controller|manette|mando|dualsense|volant|volante|headset|casque|auriculares)\b'
+  - '^\W*(sony\s+|microsoft\s+)?(ps\s?5|playstation\s?5|play\s?station\s?5|xbox\s?series\s?x)\s+(controller|manette|mando|dualsense|volant|volante|headset|casque|auriculares)\b'
 
 # 3) Señales de que SÍ es la consola (pesan más que un accesorio mencionado: "PS5 Slim + 2 mandos").
 pistas_consola:
