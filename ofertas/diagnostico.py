@@ -211,3 +211,49 @@ def sonda_formatos() -> None:
         trozos("vinted", t, r'catalog', 3, 200)
     except Exception as e:
         log.info("Formato vinted error %s", e)
+
+
+def sonda_detalle() -> None:
+    """Solo log: estructura concreta de Cash Converters, rebuy, CeX (búsqueda) y Vinted (catálogo)."""
+    import json as _json
+    import re as _re
+    s = sesion_navegador()
+    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
+    try:
+        t = s.get(SONDAS["cashconverters"], timeout=25, headers=h).text
+        i = t.find('class="product-tile')
+        log.info("Detalle cashconv tile: %s", " ".join(t[i:i + 2600].split()))
+    except Exception as e:
+        log.info("Detalle cashconv error %s", e)
+    try:
+        t = s.get(SONDAS["rebuy"], timeout=25, headers=h).text
+        for m in list(_re.finditer(r'(?i)playstation 5', t))[:2]:
+            log.info("Detalle rebuy …%s…", " ".join(t[max(0, m.start() - 900):m.start() + 600].split()))
+    except Exception as e:
+        log.info("Detalle rebuy error %s", e)
+    try:
+        cuerpo = {"requests": [{"indexName": "prod_cex_es", "params":
+                  "facetFilters=%5B%5B%22availability%3AIn%20Stock%20Online%22%5D%5D&filters=boxVisibilityOnWeb%3D1"
+                  "&hitsPerPage=5&page=0&query=ps5"}]}
+        r = s.post("https://search.webuy.io/1/indexes/*/queries", data=_json.dumps(cuerpo), timeout=25,
+                   headers={"Content-Type": "application/json; charset=UTF-8", "Accept": "application/json",
+                            "Origin": "https://es.webuy.com", "Referer": "https://es.webuy.com/"})
+        log.info("Detalle cex %s %s", r.status_code, " ".join(r.text[:200].split()))
+        if r.status_code < 400:
+            hits = (r.json().get("results") or [{}])[0].get("hits") or []
+            log.info("Detalle cex %d hits; claves=%s", len(hits), sorted(hits[0].keys()) if hits else None)
+            for hit in hits[:2]:
+                log.info("Detalle cex hit: %s", {k: hit.get(k) for k in ("boxId", "boxName", "sellPrice",
+                         "categoryFriendlyName", "imageUrls", "boxBuyAllowed", "outOfStock", "ecomQuantityOnHand")})
+    except Exception as e:
+        log.info("Detalle cex error %s", e)
+    try:
+        r = s.get("https://www.vinted.es/catalog?search_text=ps5&order=newest_first", timeout=25, headers=h)
+        t = r.text
+        log.info("Detalle vinted catalog %s · %d bytes", r.status_code, len(t))
+        for patron in (r'\\?"price\\?"', r'"items"', r'catalogItems', r'"item_box"', r'/items/\d+'):
+            m = _re.search(patron, t)
+            if m:
+                log.info("Detalle vinted [%s] …%s…", patron, " ".join(t[max(0, m.start() - 200):m.start() + 400].split()))
+    except Exception as e:
+        log.info("Detalle vinted error %s", e)
