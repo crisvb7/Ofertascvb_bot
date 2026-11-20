@@ -1,6 +1,7 @@
 """Cash Converters: lee los productos de su página de búsqueda (los más recientes primero)."""
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import re
@@ -24,6 +25,22 @@ def buscar(sesion, consulta: str) -> list[Anuncio]:
 
 
 def parsear(pagina: str) -> list[Anuncio]:
+    """Una entrada por modelo/precio/estado: muchas tiendas venden la misma consola al mismo precio."""
+    grupos: dict[str, Anuncio] = {}
+    for a in _unidades(pagina):
+        clave = f"{a.titulo.lower()}|{a.precio}|{(a.estado or '').lower()}"
+        if clave in grupos:
+            g = grupos[clave]
+            n = int(g.ciudad.split()[0]) + 1
+            g.ciudad = f"{n} unidades en tiendas"
+            continue
+        a.id = "g" + hashlib.sha1(clave.encode()).hexdigest()[:12]
+        a.ciudad = "1 unidad en tienda"
+        grupos[clave] = a
+    return list(grupos.values())
+
+
+def _unidades(pagina: str) -> list[Anuncio]:
     marcas = list(_TILE.finditer(pagina))
     anuncios = []
     for i, m in enumerate(marcas):

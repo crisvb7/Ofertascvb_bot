@@ -24,6 +24,8 @@ class Producto:
     nuevo_min: float | None = None
     nuevo_max: float | None = None
     tope: float | None = None           # por encima de esto no avisa nunca
+    accesorios: list[re.Pattern] = field(default_factory=list)
+    pistas_consola: list[re.Pattern] = field(default_factory=list)
 
     def coincide(self, a: Anuncio) -> bool:
         """¿El anuncio es de verdad esta consola (y no un mando, un juego, una funda...)?"""
@@ -31,6 +33,9 @@ class Producto:
         if not any(p.search(t) for p in self.incluir):
             return False
         if any(p.search(t) for p in self.excluir):
+            return False
+        # "Manette PS5 GTA 6" fuera; "PS5 Slim + 2 manettes" dentro (dice que es la consola)
+        if any(p.search(t) for p in self.accesorios) and not any(p.search(t) for p in self.pistas_consola):
             return False
         if self.excluir_descripcion and a.descripcion:
             d = normalizar(a.descripcion)
@@ -109,6 +114,8 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
     datos = yaml.safe_load(Path(ruta).read_text(encoding="utf-8")) or {}
     exc_comun = datos.get("excluir_comun") or []
     exc_desc = datos.get("excluir_descripcion_comun") or []
+    accesorios = _regex(datos.get("accesorios") or [])
+    pistas = _regex(datos.get("pistas_consola") or [])
 
     productos = []
     for p in datos.get("productos") or []:
@@ -123,6 +130,8 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
             usado_min=usado.get("min"), usado_max=usado.get("max"),
             nuevo_min=nuevo.get("min"), nuevo_max=nuevo.get("max"),
             tope=p.get("tope"),
+            accesorios=accesorios,
+            pistas_consola=pistas,
         ))
     if not productos:
         raise ValueError("config.yaml no tiene ningún producto en 'productos'")

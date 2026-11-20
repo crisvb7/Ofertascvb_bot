@@ -35,6 +35,16 @@ def wp(id_, titulo, precio, lugar=OVIEDO, envio=False, desc="", ciudad="Oviedo",
     ("Juego Astro Bot PS5", False),
     ("PS5 Slim + GTA VI", True),
     ("Consola PS5 con mando", True),
+    ("Manette PS5 GTA 6 édition limitée", False),
+    ("Nieuwe GTA 6 controller PlayStation 5", False),
+    ("Cerco PS5", False),
+    ("🎮 Concours pour gagner une PS5 🔥", False),
+    ("Vendo Foto Playstation 5 fat A4", False),
+    ("PlayStation 5 veuillez bien lire la description", False),
+    ("PS5 portable", False),
+    ("PS5 Slim - Très bon état", True),
+    ("PS5 slim + 2 manettes", True),
+    ("Ps5 Semi Nova", True),
 ])
 def test_coincide_ps5(cfg, titulo, esperado):
     assert cfg.producto("PS5").coincide(wp("1", titulo, 300)) is esperado

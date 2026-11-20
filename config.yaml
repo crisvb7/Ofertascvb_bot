@@ -94,6 +94,29 @@ excluir_comun:
   - '\bcoleccionista\b'
   - '\bcollector'
   - '\bsteelbook\b'
+  # otros idiomas (Vinted enseña anuncios de toda Europa)
+  - '\b(cerco|cherche|recherche|suche|zoek|procuro|looking for)\b'
+  - '\b(concours|concorso|sorteo|giveaway|gewinnspiel)\b'
+  - '\b(foto|photo|poster|affiche)\b'
+  - '\bportable\b'
+  - '(lire|leer|leggere|ler|read)( bien| bem| the)? (la |a )?(description|descripcion|descrizione|descricao)'
+  - '\b(boite vide|scatola vuota|caixa vazia|empty box|leere verpackung)\b'
+  - '\b(hs|en panne|defectueuse|guasta|kaputt|defekt|avariada)\b'
+
+# Accesorios en varios idiomas: se descartan SALVO que el título diga que es la consola
+# (p. ej. "PS5 Slim + 2 mandos" sí; "Manette PS5 GTA 6" no).
+accesorios:
+  - '\b(mandos?|manettes?|mannettes?|controllers?|comandos?|joysticks?|dualsense|gamepads?)\b'
+  - '\b(jeux|jeu|juegos?|giochi|gioco|spiele|spiel|jogos?|games?)\b'
+  - '\b(casque|cuffie|headset|kopfhorer)\b'
+  - '\b(chargeur|caricatore|ladestation|charging)\b'
+pistas_consola:
+  - 'consol'
+  - '\b(slim|digital|digitale|numerique|standard|estandar)\b'
+  - '\b\d+\s?(tb|to|gb|go)\b'
+  - '\b(lector|disco|lecteur|lettore|laufwerk|disc|blu-?ray)\b'
+  # packs: "PS5 con 2 mandos", "Xbox + juegos", "PS5 avec manettes"...
+  - '(\+|\b(con|avec|with|mit|com|e|y|und|incluye|inclus|incluso)\b)\s*(\d+\s*)?(mandos?|manettes?|controllers?|comandos?|juegos?|jeux|games?|giochi|spiele|jogos?)\b'
 
 # Lo mismo, pero buscando en la DESCRIPCIÓN del anuncio.
 excluir_descripcion_comun:

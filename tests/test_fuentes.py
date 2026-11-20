@@ -172,9 +172,20 @@ def test_cashconverters():
     assert s.llamadas[0][1]["srule"] == "most-recent"
     assert len(res) == 1
     a = res[0]
-    assert (a.id, a.titulo, a.precio, a.estado) == ("CC100_E1_0", "Consola ps5 sony playstation 5", 594.95, "Bueno")
+    assert (a.titulo, a.precio, a.estado, a.ciudad) == ("Consola ps5 sony playstation 5", 594.95, "Bueno",
+                                                       "1 unidad en tienda")
     assert a.url == "https://www.cashconverters.es/es/es/segunda-mano/CC100_E1_0.html"
-    assert a.imagen.startswith("https://images.cashconverters.es/productslive/a_0.jpg")
+    assert a.imagen == "https://images.cashconverters.es/productslive/a_0.jpg"
+
+
+def test_cashconverters_agrupa_unidades_iguales():
+    from ofertas.fuentes import cashconverters
+    tile = CASH_HTML.split("</div></div>")[0] + "</div></div>"
+    otra = tile.replace("CC100_E1_0", "PT006_E2_0")
+    barata = tile.replace("CC100_E1_0", "X1").replace("594.95", "399")
+    res = cashconverters.parsear(tile + otra + barata)
+    assert sorted((a.precio, a.ciudad) for a in res) == [(399.0, "1 unidad en tienda"), (594.95, "2 unidades en tiendas")]
+    assert len({a.id for a in res}) == 2 and all(a.id.startswith("g") for a in res)
 
 
 RSS = """<?xml version="1.0" encoding="UTF-8"?>
