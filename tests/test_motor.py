@@ -68,6 +68,14 @@ C, D, F = "consola", "dudosa", None
     ("PS5 portable", F),
     ("Unidad de disco para consolas PlayStation 5 Edición Digital Slim", F),
     ("Cambio PlayStation 5 Pro por Xbox series x +400€", F),
+    ("Lot de 7 jeux neuf ps5", F),
+    ("Vários jogos playstation5 (sealed)", F),
+    ("Lot indissociable manette ps5 GTA6", F),
+    ("PS5 Controller GTA VI White limited edition", F),
+    ("PS5 sans manette", C),
+    ("Lot console PS5 slim + 2 manettes", D),
+    ("PACK PlayStation 5 + mando inalámbrico + EA Sports FC27", C),
+    ("Ps5 slim + câbles (lire la description )", D),
 ])
 def test_clasifica_ps5(cfg, titulo, esperado):
     assert cfg.producto("PS5").clasificar(wp("1", titulo, 300))[0] == esperado
@@ -81,6 +89,7 @@ def test_clasifica_ps5(cfg, titulo, esperado):
     ("Xbox Séries X", C),
     ("Xbox Series X + Controller a elegir", C),
     ("Cambio Xbox Series X por PS5", D),
+    ("Xbox Series X (no incluye caja ni mando)", C),
     ("Xbox Series S 512GB", F),
     ("Forza Horizon Xbox Series X|S", F),
     ("Mando Elite Series 2 Xbox Series X", F),

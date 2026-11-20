@@ -88,6 +88,10 @@ accesorios:
   - '\b(cargador|chargeur|caricatore|ladestation|charging|base de carga|estacion de carga|dock)\b'
   - '\b(fundas?|housse|custodia|soporte|support|stand|skins?|vinilos?|pegatinas?|carcasas?|tapas?|faceplates?|cover)\b'
   - '\b(cables?|hdmi|ssd|nvme|disco duro|tarjeta|camara|camera|ventilador|monitor|mueble|teclado|raton)\b'
+  # (solo al principio) lotes de juegos o mandos: "Lot de 7 jeux ps5", "Vários jogos playstation5"
+  - '^\W*(lot|lote|lotto|lots|varios|varias|plusieurs|several|diversi)\b.{0,25}\b(jeux|jeu|juegos?|jogos?|giochi|games?|manettes?|mandos?|controllers?)\b'
+  # (solo al principio) el nombre de la consola seguido de un accesorio: "PS5 Controller GTA VI"
+  - '^\W*(ps\s?5|playstation\s?5|play\s?station\s?5|xbox\s?series\s?x)\s+(controller|manette|mando|dualsense|volant|volante|headset|casque|auriculares)\b'
 
 # 3) Señales de que SÍ es la consola (pesan más que un accesorio mencionado: "PS5 Slim + 2 mandos").
 pistas_consola:
@@ -95,6 +99,8 @@ pistas_consola:
   - '\b(slim|fat|digital|digitale|numerique|standard|estandar|chassis)\b'
   - '\b\d+\s?(tb|to|gb|go)\b'
   - '\b(lector|disco|lecteur|lettore|laufwerk|disc|blu-?ray)\b'
+  # "Xbox Series X (no incluye caja ni mando)", "PS5 sans manette": es la consola
+  - '\b(sin|sans|senza|no incluye|without|ohne|sem)\b.{0,15}\b(mandos?|manettes?|controllers?|caja|boite|scatola)\b'
   # packs: "PS5 con 2 mandos", "Xbox + juegos", "PS5 avec manettes"...
   - '(\+|\b(con|avec|with|mit|com|e|y|und|incluye|inclus|incluso)\b)\s*(\d+\s*)?(mandos?|manettes?|controllers?|controles?|comandos?|joysticks?|joypads?|pads?|juegos?|jeux|games?|giochi|spiele|jogos?)\b'
 
