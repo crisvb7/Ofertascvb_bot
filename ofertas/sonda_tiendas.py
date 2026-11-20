@@ -94,3 +94,42 @@ def formatos() -> None:
                      len(re.findall(r"\d+[,.]\d{2}\s?€", r.text)))
         except Exception as e:
             log.info("Fmt xtralife error %s", e)
+
+
+def formatos2() -> None:
+    s = sesion_navegador()
+    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
+    for url in ("https://www.game.es/buscar/consola-ps5", "https://www.game.es/buscar/consola-xbox-series-x"):
+        try:
+            r = s.get(url, timeout=25, headers=h)
+            t = r.text
+            log.info("F2 game %s -> %s (%s)", url, r.status_code, str(r.url)[:100])
+            i = t.find('ProductListCard-module')
+            j = t.find('ProductListCard-module', i + 5000)
+            log.info("F2 game card: %s", " ".join(t[max(0, i - 300):i + 4500].split())[:4000])
+            hrefs = re.findall(r'href="(/[a-z0-9-]+/\d{5,7})"', t)
+            log.info("F2 game %d enlaces de producto: %s", len(set(hrefs)), sorted(set(hrefs))[:12])
+            m = re.search(r'self\.__next_f\.push', t)
+            log.info("F2 game rsc=%s next_data=%s", bool(m), "__NEXT_DATA__" in t)
+        except Exception as e:
+            log.info("F2 game error %s", e)
+    try:
+        t = s.get(TIENDAS["elcorteingles"], timeout=25, headers=h).text
+        for patron in (r'"price"\s*:', r'"final"\s*:', r'"name"\s*:\s*"Consola', r'__NUXT__|__INITIAL|window\.__'):
+            for m in list(re.finditer(patron, t))[:2]:
+                log.info("F2 eci [%s] …%s…", patron, " ".join(t[max(0, m.start() - 300):m.start() + 500].split()))
+        arts = re.findall(r'<article[^>]*class="product_preview(?! skeleton)[^"]*"', t)
+        log.info("F2 eci %d artículos no-esqueleto", len(arts))
+        i = t.find('js_preview_image')
+        log.info("F2 eci producto: %s", " ".join(t[max(0, i - 2500):i + 2500].split())[:4000])
+    except Exception as e:
+        log.info("F2 eci error %s", e)
+    try:
+        j = s.get(TIENDAS["carrefour_api"], timeout=25, headers=h).json()
+        for it in ((j.get("catalog") or {}).get("content") or [])[:4]:
+            log.info("F2 carref %s | %s | %s | %s | stock=%s | bundle=%s | %s", it.get("display_name"),
+                     it.get("active_price"), it.get("list_price"), (it.get("urls") or {}).get("nonFood"),
+                     it.get("stock"), it.get("is_bundle"), it.get("image_path"))
+        log.info("F2 carref otras claves: %s", sorted(k for k in j.keys()))
+    except Exception as e:
+        log.info("F2 carref error %s", e)
