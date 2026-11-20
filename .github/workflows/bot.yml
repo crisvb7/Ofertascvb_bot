@@ -1,5 +1,10 @@
 name: Bot de ofertas
 
+# Modo "bucle" (el normal): cada ejecución vigila durante 55 minutos y al terminar lanza la
+# siguiente, así el bot está siempre en marcha. Para pararlo: cancela la ejecución en curso
+# (Actions → la ejecución → Cancel workflow run) o desactiva el workflow.
+# Si la cadena se cortara, la tarea programada de abajo (o una ejecución a mano) la reanuda.
+
 on:
   schedule:
     # IMPORTANTE: GitHub solo ejecuta las tareas programadas si la última persona que tocó
@@ -15,8 +20,12 @@ on:
       accion:
         description: "Qué hacer"
         type: choice
-        options: [pasada, prueba, diagnostico, simular]
-        default: pasada
+        options: [bucle, pasada, prueba, diagnostico, simular]
+        default: bucle
+      minutos:
+        description: "Minutos de cada vuelta (modo bucle)"
+        type: string
+        default: "55"
 
 concurrency:
   group: bot-ofertas-${{ github.event.schedule == '23 5 1 * *' && 'latido' || 'bot' }}
@@ -29,9 +38,13 @@ jobs:
   bot:
     if: github.event.schedule != '23 5 1 * *'
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      actions: write          # para lanzar la siguiente vuelta
     env:
-      ACCION: ${{ inputs.accion || 'pasada' }}
+      ACCION: ${{ inputs.accion || 'bucle' }}
+      MINUTOS: ${{ inputs.minutos || '55' }}
     steps:
       - uses: actions/checkout@v6
 
@@ -64,15 +77,22 @@ jobs:
             prueba)      python bot.py --prueba ;;
             diagnostico) python bot.py --diagnostico ;;
             simular)     python bot.py --simular ;;
-            *)           python bot.py --una-vez ;;
+            pasada)      python bot.py --una-vez ;;
+            *)           python bot.py --minutos "$MINUTOS" ;;
           esac
 
       - name: Guardar memoria del bot
-        if: always() && env.ACCION == 'pasada' && hashFiles('datos/ofertas.db') != ''
+        if: always() && (env.ACCION == 'pasada' || env.ACCION == 'bucle') && hashFiles('datos/ofertas.db') != ''
         uses: actions/cache/save@v5
         with:
           path: datos
           key: estado-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Lanzar la siguiente vuelta
+        if: ${{ !cancelled() && env.ACCION == 'bucle' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run bot.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f accion=bucle
 
   latido:
     if: github.event.schedule == '23 5 1 * *'

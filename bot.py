@@ -40,6 +40,8 @@ def main() -> int:
     ap.add_argument("--prueba", action="store_true", help="enviar un aviso de prueba")
     ap.add_argument("--chat-id", action="store_true", help="mostrar los chats que han escrito al bot")
     ap.add_argument("--mercado", action="store_true", help="resumen de precios vistos")
+    ap.add_argument("--minutos", type=float, default=None,
+                    help="funcionar sin parar durante N minutos y salir (GitHub Actions en cadena)")
     ap.add_argument("--diagnostico", action="store_true",
                     help="comprueba cada plataforma y manda un informe por Telegram")
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -86,7 +88,7 @@ def main() -> int:
 
     estado = Estado(":memory:" if args.simular else ruta_bd)
     avisador = avisos.crear_avisador(cfg, solo_consola=args.simular, estado=estado)
-    pausa = (1.0, 2.5) if args.una_vez else (2.0, 5.0)    # en GitHub Actions, cuanto más corto mejor
+    pausa = (1.0, 2.5) if args.una_vez else (2.0, 5.0)    # una sola pasada: cuanto más corta mejor
     motor = Motor(cfg, estado, avisador, pausa=(0, 0) if args.simular else pausa)
     log.info("Bot de ofertas %s (HTTP: %s) · productos: %s", __version__, MOTOR,
              ", ".join(p.nombre for p in cfg.productos))
@@ -108,18 +110,23 @@ def main() -> int:
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, salir)
-    activas = [f for f in ("wallapop", "vinted", "chollometro", "tiendas")
-               if cfg.activa(f) and (f != "tiendas" or cfg.tiendas)]
-    avisador.enviar(avisos.Aviso(
-        html=f"🤖 Bot arrancado. Vigilo <b>{', '.join(p.nombre for p in cfg.productos)}</b> "
-             f"en {', '.join(activas)}.",
-        texto=f"🤖 Bot arrancado. Vigilo {', '.join(p.nombre for p in cfg.productos)} en {', '.join(activas)}."))
+    fin = time.time() + args.minutos * 60 if args.minutos else None
+    if fin is None:          # en modo cadena (--minutos) no se anuncia cada relevo
+        from ofertas.motor import FUENTES
+        activas = [avisos.ETIQUETA_FUENTE.get(f, f) for f in FUENTES
+                   if cfg.activa(f) and (f != "tiendas" or cfg.tiendas)]
+        texto = f"🤖 Bot arrancado. Vigilo {', '.join(p.nombre for p in cfg.productos)} en {', '.join(activas)}."
+        avisador.enviar(avisos.Aviso(html=texto, texto=texto))
+    else:
+        log.info("Funcionando %.0f minutos", args.minutos)
     try:
-        while True:
+        while fin is None or time.time() < fin - 30:
             motor.ciclo()
-            time.sleep(20)
+            espera = 20 if fin is None else max(0, min(20, fin - 30 - time.time()))
+            time.sleep(espera)
     except KeyboardInterrupt:
         log.info("Parando el bot")
+    log.info("Fin: %d avisos en esta ejecución", motor.avisos_enviados)
     return 0
 
 

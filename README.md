@@ -75,17 +75,20 @@ En el repo: **Settings → Secrets and variables → Actions → New repository 
    abre `.github/workflows/bot.yml` en GitHub (icono del lápiz), cambia `*/10 * * * *` por
    `3-59/10 * * * *` y pulsa **Commit changes**. Así la tarea queda a tu nombre (y además evita el minuto
    :00, cuando GitHub va más saturado).
-5. Listo: a partir de ahí se ejecuta solo cada 10 minutos. La primera pasada te manda lo que ya hay
-   publicado (hasta 25 mensajes) y luego solo lo nuevo.
-   Si en una hora no ves ejecuciones *scheduled* en la pestaña Actions, repasa el paso 4.
+5. **Arráncalo**: **Run workflow → `bucle`**. Cada ejecución vigila durante 55 minutos (Wallapop cada 5,
+   el resto cada 10–30) y al terminar lanza la siguiente, así que queda en marcha sin parar.
+   Para pararlo: cancela la ejecución en curso (*Cancel workflow run*). Para reanudarlo: otra vez
+   **Run workflow → `bucle`**. La primera vez te manda lo que ya hay publicado (25 mensajes por tanda)
+   y luego solo lo nuevo.
 
 Para cambiar precios o productos, edita `config.yaml` en GitHub (icono del lápiz) y guarda: la siguiente
 ejecución ya lo usa.
 
 **Lo que tienes que saber de esta opción**
 
-- **Ritmo**: cada 10 minutos como mucho, y GitHub a veces retrasa las ejecuciones programadas unos minutos
-  en horas de mucha carga.
+- **En marcha continua**: el bot ocupa una máquina de GitHub todo el tiempo (gratis en repos públicos).
+  Las tareas programadas de GitHub resultaron poco fiables, por eso cada ejecución lanza la siguiente.
+  Si la cadena se cortara (un fallo de GitHub), relánzala con **Run workflow → `bucle`**.
 - **Plataformas** (probadas desde los servidores de GitHub):
   - ✅ Wallapop, Vinted (leyendo su página de búsqueda), CeX, Cash Converters, Carrefour, GAME,
     El Corte Inglés y Chollometro.
