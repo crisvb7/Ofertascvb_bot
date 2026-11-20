@@ -257,3 +257,53 @@ def sonda_detalle() -> None:
                 log.info("Detalle vinted [%s] …%s…", patron, " ".join(t[max(0, m.start() - 200):m.start() + 400].split()))
     except Exception as e:
         log.info("Detalle vinted error %s", e)
+
+
+def sonda_final() -> None:
+    import json as _json
+    import re as _re
+    s = sesion_navegador()
+    h = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
+    for indice, params in (("prod_cex_es", "hitsPerPage=3&page=0&query=playstation%205"),
+                           ("prod_cex_es", "hitsPerPage=3&page=0&query=ps5&filters=boxVisibilityOnWeb%3D1"),
+                           ("prod_cex_uk", "hitsPerPage=1&page=0&query=ps5")):
+        try:
+            r = s.post("https://search.webuy.io/1/indexes/*/queries", timeout=25,
+                       data=_json.dumps({"requests": [{"indexName": indice, "params": params}]}),
+                       headers={"Content-Type": "application/json; charset=UTF-8", "Accept": "application/json",
+                                "Origin": "https://es.webuy.com", "Referer": "https://es.webuy.com/"})
+            res = (r.json().get("results") or [{}])[0] if r.status_code < 400 else {}
+            hits = res.get("hits") or []
+            log.info("Final cex %s [%s] -> %s nbHits=%s", indice, params[:60], r.status_code, res.get("nbHits"))
+            if hits:
+                log.info("Final cex claves=%s", sorted(hits[0].keys()))
+                log.info("Final cex hit=%s", " ".join(_json.dumps({k: hits[0].get(k) for k in hits[0]
+                         if k not in ("_highlightResult",)}, ensure_ascii=False)[:1500].split()))
+        except Exception as e:
+            log.info("Final cex error %s", e)
+    try:
+        t = s.get("https://www.vinted.es/catalog?search_text=ps5&order=newest_first", timeout=25, headers=h).text
+        ids = _re.findall(r'data-testid="product-item-id-(\d+)--overlay-link"', t)
+        log.info("Final vinted %d items en la página", len(ids))
+        for iid in ids[:3]:
+            m = _re.search(r'<img[^>]*?alt="([^"]*)"[^>]*?src="([^"]+)"[^>]*?data-testid="product-item-id-%s--image--img"' % iid, t)
+            m2 = _re.search(r'<a href="(/items/%s[^"]*)"[^>]*?title="([^"]*)"' % iid, t)
+            log.info("Final vinted %s | img=%s | href=%s | title=%s", iid, m.group(2)[:120] if m else None,
+                     m2.group(1)[:80] if m2 else None, m2.group(2)[:160] if m2 else None)
+        i = t.find("product-item-id-%s--image--img" % ids[0]) if ids else -1
+        if i > 0:
+            log.info("Final vinted html img: %s", " ".join(t[i - 700:i + 60].split()))
+    except Exception as e:
+        log.info("Final vinted error %s", e)
+    try:
+        t = s.get("https://www.cashconverters.es/es/es/search/?q=ps5&srule=most-recent&sz=48", timeout=25, headers=h).text
+        tiles = _re.findall(r'data-pid="([^"]+)" data-product-datalayer="([^"]+)"', t)
+        log.info("Final cashconv %d tiles (srule=most-recent)", len(tiles))
+        import html as _html
+        for pid, dl in tiles[:4]:
+            d = _json.loads(_html.unescape(dl))
+            log.info("Final cashconv %s %s %s %s", pid, d.get("name"), d.get("price"), d.get("variant"))
+        urls = _re.findall(r'"url":"(https://www\.cashconverters\.es/[^"]+)"', t)[:2]
+        log.info("Final cashconv urls=%s", urls)
+    except Exception as e:
+        log.info("Final cashconv error %s", e)
