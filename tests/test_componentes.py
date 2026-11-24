@@ -30,7 +30,8 @@ def chollo(id_, titulo, precio, tienda="PcComponentes"):
 
 def test_los_componentes_se_cargan_como_tales(cfg):
     piezas = [p.nombre for p in cfg.productos if p.es_componente]
-    assert piezas == ["Ryzen 7 5700X3D", "Ryzen 7 5800X3D", "Ryzen 5 5600", "RX 9060 XT 16GB", "RX 9070"]
+    assert piezas == ["Ryzen 7 5700X3D", "Ryzen 7 5800X3D", "Ryzen 5 5600", "RX 9060 XT 16GB", "RX 9070",
+                      "RX 9070 XT"]
     assert not cfg.producto("PS5").es_componente
 
 
@@ -69,6 +70,11 @@ def test_los_componentes_se_cargan_como_tales(cfg):
     ("RX 9070", "RX 9070 GRE 12GB", F),
     ("RX 9070", "Backplate RX 9070", F),
     ("RX 9070", "Juego gratis con RX 9070", F),
+    ("RX 9070 XT", "Sapphire Nitro+ AMD Radeon RX 9070 XT 16GB", C),
+    ("RX 9070 XT", "RX 9070XT Nitro+", C),
+    ("RX 9070 XT", "Radeon RX9070-XT", C),
+    ("RX 9070 XT", "RX 9070 16GB", F),                              # la no XT va a su tema
+    ("RX 9070 XT", "PC gaming Ryzen 7 9800X3D RX 9070 XT", F),
     ("PS5", "Cambio RX 9070 por PS5", F),                            # se vende la gráfica
 ])
 def test_clasifica_componentes(cfg, producto, titulo, esperado):
@@ -121,7 +127,7 @@ def test_un_tema_por_pieza_con_su_indice(grupo, cfg):
     piezas = {k: v[0] for k, v in avisos.CATEGORIAS.items() if k.startswith("pc_")}
     assert piezas == {"pc_ryzen-7-5700x3d": "🖥️ Ryzen 7 5700X3D", "pc_ryzen-7-5800x3d": "🖥️ Ryzen 7 5800X3D",
                       "pc_ryzen-5-5600": "🖥️ Ryzen 5 5600", "pc_rx-9060-xt-16gb": "🖥️ RX 9060 XT 16GB",
-                      "pc_rx-9070": "🖥️ RX 9070"}
+                      "pc_rx-9070": "🖥️ RX 9070", "pc_rx-9070-xt": "🖥️ RX 9070 XT"}
     assert set(av.indices) == set(avisos.CATEGORIAS)                 # un índice por tema
     cpu = av.indices["pc_ryzen-7-5700x3d"]
     assert cpu.startswith("📌 <b>🖥️ Ryzen 7 5700X3D</b>") and "220 €</b> · ♻️ usada" in cpu
@@ -207,5 +213,6 @@ def test_piezas_se_buscan_solo_hasta_su_tope(grupo, cfg, monkeypatch):
 def test_temas_de_las_piezas_fijados_en_config(cfg):
     for clave in ("pc_ryzen-7-5700x3d", "pc_ryzen-7-5800x3d", "pc_ryzen-5-5600", "pc_rx-9060-xt-16gb", "pc_rx-9070"):
         assert clave in cfg.telegram_temas
-    assert sorted(avisos.seccion_pieza(p.nombre) for p in cfg.productos if p.es_componente) == sorted(
-        k for k in cfg.telegram_temas if k.startswith("pc_"))
+    # los fijados son de piezas que existen (una pieza nueva aún no tiene id: el bot le crea el tema)
+    piezas = {avisos.seccion_pieza(p.nombre) for p in cfg.productos if p.es_componente}
+    assert {k for k in cfg.telegram_temas if k.startswith("pc_")} <= piezas

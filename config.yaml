@@ -253,6 +253,15 @@ productos:
     segunda_mano: {min: 380, max: 520}
     nuevo: {min: 450, max: 590}
 
+  # La RX 9070 XT. En 2026 ha estado entre 640 y 725 € nueva.
+  - nombre: RX 9070 XT
+    tipo: componente
+    busquedas: ["rx 9070 xt"]
+    incluir: ['(\brx\s?|\b)9070\s?-?xt\b']
+    tope: 900
+    segunda_mano: {min: 450, max: 600}
+    nuevo: {min: 550, max: 680}
+
   # ¿También te vale una PS5 Pro? Quita los '#' de este bloque.
   # - nombre: PS5 Pro
   #   busquedas: ["ps5 pro"]

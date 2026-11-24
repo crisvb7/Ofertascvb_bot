@@ -28,7 +28,7 @@ anuncios de toda Europa):
 También descarta los anuncios reservados y los de fuera de tu radio sin envío.
 
 **Piezas de PC 🖥️.** Los productos con `tipo: componente` en `config.yaml` (ahora: Ryzen 7 5700X3D,
-Ryzen 7 5800X3D, Ryzen 5 5600, RX 9060 XT 16GB y RX 9070) tienen **cada una su propio tema** en el
+Ryzen 7 5800X3D, Ryzen 5 5600, RX 9060 XT 16GB, RX 9070 y RX 9070 XT) tienen **cada una su propio tema** en el
 grupo («🖥️ Ryzen 7 5700X3D», «🖥️ RX 9070»…), con lo nuevo y lo de segunda mano juntos:
 - **Nuevas**: Chollometro (PcComponentes, Amazon, Coolmod…), Carrefour, El Corte Inglés y GAME.
 - **Segunda mano**: Wallapop, Vinted, CeX y Cash Converters.
