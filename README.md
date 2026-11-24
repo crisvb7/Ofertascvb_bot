@@ -28,12 +28,14 @@ anuncios de toda Europa):
 También descarta los anuncios reservados y los de fuera de tu radio sin envío.
 
 **Piezas de PC 🖥️.** Los productos con `tipo: componente` en `config.yaml` (ahora: Ryzen 7 5700X3D,
-Ryzen 7 5800X3D, Ryzen 5 5600, RX 9060 XT 16GB y RX 9070) van a **dos temas propios** del grupo:
-- **🖥️ Componentes PC · 🆕 Nuevos**: Chollometro (PcComponentes, Amazon, Coolmod…), Carrefour,
-  El Corte Inglés y GAME.
-- **🖥️ Componentes PC · ♻️ Segunda mano**: Wallapop, Vinted, CeX y Cash Converters.
+Ryzen 7 5800X3D, Ryzen 5 5600, RX 9060 XT 16GB y RX 9070) tienen **cada una su propio tema** en el
+grupo («🖥️ Ryzen 7 5700X3D», «🖥️ RX 9070»…), con lo nuevo y lo de segunda mano juntos:
+- **Nuevas**: Chollometro (PcComponentes, Amazon, Coolmod…), Carrefour, El Corte Inglés y GAME.
+- **Segunda mano**: Wallapop, Vinted, CeX y Cash Converters.
 
-Cada mensaje lleva su 🔥 OFERTÓN / 💰 BUEN PRECIO como con las consolas, y el índice fijado de cada tema.
+Cada mensaje dice si es nueva o de segunda mano y lleva su 🔥 OFERTÓN / 💰 BUEN PRECIO como con las
+consolas. El índice fijado de cada tema marca cada oferta con 🆕 o ♻️. Si añades una pieza, el bot le
+crea su tema solo.
 Se reconocen por el título con las reglas del bloque `componentes`: fuera portátiles, PCs montados y
 lo que empieza por un accesorio ("Disipador para…", "Placa B550…"); marcados ❓ los packs con placa
 o RAM, los cambios, los averiados o los usados para minar. Para vigilar otra pieza, copia uno de

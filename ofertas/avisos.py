@@ -1,8 +1,8 @@
 """Envío de avisos: Telegram (recomendado) y/o WhatsApp vía CallMeBot.
 
 Con un grupo de Telegram con temas, cada oferta va al tema de su categoría
-(🔥 Ofertones, 💰 Buen precio, 🏷️ Resto; las piezas de PC, a sus dos temas de nuevos y de
-segunda mano), los mensajes se actualizan cuando el anuncio se vende o cambia de precio, y
+(🔥 Ofertones, 💰 Buen precio, 🏷️ Resto; cada pieza de PC, a su propio tema con lo nuevo y lo
+usado juntos), los mensajes se actualizan cuando el anuncio se vende o cambia de precio, y
 cada tema tiene un índice fijado con lo más nuevo arriba.
 """
 from __future__ import annotations
@@ -10,11 +10,12 @@ from __future__ import annotations
 import hashlib
 import html
 import logging
+import re
 import time
 from dataclasses import dataclass
 
 from .red import sesion_simple
-from .utiles import euros, hora_local
+from .utiles import euros, hora_local, normalizar
 
 log = logging.getLogger(__name__)
 
@@ -39,20 +40,32 @@ CATEGORIAS = {
     "usada_buen_precio": ("♻️ Segunda mano · 💰 Buen precio", 16766590),
     "usada_resto": ("♻️ Segunda mano · 🏷️ Resto", 7322096),
     "revisar": ("❓ Revisar · ¿es consola?", 16749490),
-    # Piezas de PC: un tema para lo nuevo y otro para lo de segunda mano (todas las categorías juntas)
-    "pc_nuevo": ("🖥️ Componentes PC · 🆕 Nuevos", 9367192),
-    "pc_usado": ("🖥️ Componentes PC · ♻️ Segunda mano", 16766590),
+    # + un tema por cada pieza de PC ("pc_<nombre>"), que se añade con registrar_piezas()
 }
-SECCIONES_NUEVAS = ("nueva_oferton", "nueva_buen_precio", "pc_nuevo")
-SECCIONES_USADAS = ("usada_oferton", "usada_buen_precio", "usada_resto", "pc_usado")
+SECCIONES_NUEVAS = ("nueva_oferton", "nueva_buen_precio")
+SECCIONES_USADAS = ("usada_oferton", "usada_buen_precio", "usada_resto")
+FUENTES_NUEVO = ("chollometro", "carrefour", "game", "elcorteingles", "tienda")
+_COLORES = (7322096, 16766590, 13338331, 9367192, 16749490, 16478047)   # los que admite Telegram
 
 
-def seccion(nuevo: bool, categoria: str, dudosa: bool = False, componente: bool = False) -> str:
+def seccion_pieza(nombre: str) -> str:
+    """'Ryzen 7 5700X3D' -> 'pc_ryzen-7-5700x3d'."""
+    return "pc_" + re.sub(r"[^a-z0-9]+", "-", normalizar(nombre)).strip("-")
+
+
+def registrar_piezas(productos) -> None:
+    """Añade a CATEGORIAS un tema por cada pieza de PC de config.yaml (lo nuevo y lo usado juntos)."""
+    piezas = [p for p in productos if getattr(p, "es_componente", False)]
+    for i, p in enumerate(piezas):
+        CATEGORIAS.setdefault(seccion_pieza(p.nombre), (f"🖥️ {p.nombre}", _COLORES[i % len(_COLORES)]))
+
+
+def seccion(nuevo: bool, categoria: str, dudosa: bool = False, pieza: str | None = None) -> str:
     """'oferton' + nueva -> 'nueva_oferton'. Las nuevas no tienen 'resto' (pasan del tope).
-    Lo que no está claro que sea una consola va siempre a 'revisar'. Las piezas de PC van a
-    'pc_nuevo' o 'pc_usado' (las dudosas también, marcadas en el propio mensaje)."""
-    if componente:
-        return "pc_nuevo" if nuevo else "pc_usado"
+    Lo que no está claro que sea una consola va siempre a 'revisar'. Cada pieza de PC va a su
+    propio tema, nueva o usada (las dudosas también, marcadas en el propio mensaje)."""
+    if pieza:
+        return seccion_pieza(pieza)
     if dudosa:
         return "revisar"
     clave = f"{'nueva' if nuevo else 'usada'}_{categoria}"
@@ -347,6 +360,7 @@ class _CanalTelegram:
 
 
 def crear_avisador(cfg, solo_consola: bool = False, estado=None) -> Avisador:
+    registrar_piezas(cfg.productos)
     canales: list = []
     telegram = None
     if not solo_consola:
@@ -473,11 +487,14 @@ def construir_indice(categoria: str, filas: list[dict], dias: float, max_disponi
     filas = [f for f in filas if f["estado"] != "descartada"]
     disponibles = [f for f in filas if f["estado"] != "vendida"]
     vendidas = [f for f in filas if f["estado"] == "vendida"]
+    pieza = categoria.startswith("pc_")
     cuerpo = []
     for f in disponibles[:max_disponibles]:
         marca = "🟡" if f["estado"] == "reservada" else "✅"
         lugar = f" · {e(f['ciudad'])}" if f.get("ciudad") else ""
-        cuerpo.append(f"{marca} <b>{euros(f['precio'])}</b> · {e(f['producto'])} · "
+        # en el tema de una pieza: 🆕 nueva o ♻️ segunda mano, en vez del nombre (ya está en el tema)
+        que = ("🆕 nueva" if f.get("fuente") in FUENTES_NUEVO else "♻️ usada") if pieza else e(f["producto"])
+        cuerpo.append(f"{marca} <b>{euros(f['precio'])}</b> · {que} · "
                       f'<a href="{e(f["url"], quote=True)}">{e((f["titulo"] or "")[:45])}</a>'
                       f"{lugar} · 🕐 {hora_local(f['publicado'])}")
     if not cuerpo:

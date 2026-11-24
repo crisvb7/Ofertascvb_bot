@@ -72,6 +72,7 @@ class Motor:
         self.castigo = {f: int(estado.leer(f"castigo:{f}", "1")) for f in FUENTES}
         self.fallos = {f: int(estado.leer(f"fallos:{f}", "0")) for f in FUENTES}
         self.avisos_enviados = 0
+        avisos.registrar_piezas(cfg.productos)     # un tema por cada pieza de PC
 
     # --- planificación ----------------------------------------------------
     def ciclo(self, forzar: bool = False, margen: float = 0) -> int:
@@ -134,7 +135,7 @@ class Motor:
                                      v.sospechoso, categoria=v.categoria, duda=v.duda,
                                      vendedor=v.vendedor, componente=pieza)
             anterior = self.estado.mensaje(a.clave)
-            sec = avisos.seccion(a.nuevo, v.categoria, bool(v.duda), componente=pieza)
+            sec = avisos.seccion(a.nuevo, v.categoria, bool(v.duda), pieza=producto if pieza else None)
             ref = self.avisador.enviar_oferta(aviso, sec)
             if ref is None:
                 continue
@@ -224,7 +225,9 @@ class Motor:
             if not prod or f["precio"] is None:
                 continue
             cat = f["categoria"] or ""
-            if cat in avisos.SECCIONES_NUEVAS:
+            if cat.startswith("pc_"):               # tema de una pieza: lo nuevo y lo usado juntos
+                pmin = prod.nuevo_min if f["fuente"] in avisos.FUENTES_NUEVO else prod.usado_min
+            elif cat in avisos.SECCIONES_NUEVAS:
                 pmin = prod.nuevo_min
             elif cat in avisos.SECCIONES_USADAS:
                 pmin = prod.usado_min
@@ -472,7 +475,7 @@ class Motor:
         if motivo:
             cat = "oferton" if buen_precio else "buen_precio"
             aviso = avisos.formatear(a, prod.nombre, motivo, categoria=cat, componente=prod.es_componente)
-            sec = avisos.seccion(True, cat, componente=prod.es_componente)
+            sec = avisos.seccion(True, cat, pieza=prod.nombre if prod.es_componente else None)
             if self.avisador.enviar_oferta(aviso, sec) is not None:
                 self.avisos_enviados += 1
 

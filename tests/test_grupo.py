@@ -197,19 +197,19 @@ def test_migracion_de_categorias_antiguas(tmp_path):
 
 
 def test_preparar_temas_crea_los_que_faltan_y_renombra(monkeypatch, estado):
-    crea = [{"ok": True, "result": {"message_thread_id": 20 + i}} for i in range(7)]
+    n = len(avisos.CATEGORIAS)       # 6 de consolas + uno por pieza de PC (si ya se registraron)
+    crea = [{"ok": True, "result": {"message_thread_id": 20 + i}} for i in range(n - 1)]
     # orden de las secciones: nueva_oferton, nueva_buen_precio, usada_oferton (ya existe: renombrar), ...
     respuestas = crea[:2] + [{"ok": True, "result": True}] + crea[2:]
     t = tg(respuestas, monkeypatch)
     av = Avisador([], telegram=t, grupo_id="-100123", estado=estado, temas={"usada_oferton": 3})
     av.preparar_temas()
     metodos = [m for m, _ in t.s.llamadas]
-    assert metodos.count("createForumTopic") == 7 and metodos.count("editForumTopic") == 1
+    assert metodos.count("createForumTopic") == n - 1 and metodos.count("editForumTopic") == 1
     nombres = [d["name"] for m, d in t.s.llamadas]
     assert "🆕 Nuevas · 🔥 Ofertones" in nombres and "♻️ Segunda mano · 🔥 Ofertones" in nombres
-    assert "🖥️ Componentes PC · 🆕 Nuevos" in nombres and "🖥️ Componentes PC · ♻️ Segunda mano" in nombres
     av.preparar_temas()                                                           # segunda vez: nada
-    assert len(t.s.llamadas) == 8
+    assert len(t.s.llamadas) == n
     assert "❓ Revisar · ¿es consola?" in nombres
 
 

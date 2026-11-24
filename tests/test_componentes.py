@@ -1,4 +1,4 @@
-"""Piezas de PC: clasificación, sus dos temas del grupo (nuevos / segunda mano) y fuentes."""
+"""Piezas de PC: clasificación, un tema del grupo por pieza (nuevo y usado juntos) y fuentes."""
 import pytest
 
 from conftest import AvisadorFalso
@@ -80,7 +80,7 @@ def test_segunda_mano_va_a_su_tema(grupo, cfg):
     cpu = cfg.producto("Ryzen 7 5700X3D")
     pasada(motor, [wp("a", "AMD Ryzen 7 5700X3D", 220), wp("b", "Ryzen 7 5700X3D", 300),
                    wp("c", "Ryzen 7 5700X3D + placa B550", 340), wp("d", "Disipador 5700X3D", 160)], cpu)
-    assert av.categorias == ["pc_usado"] * 3                    # dudosa incluida; el disipador, fuera
+    assert av.categorias == ["pc_ryzen-7-5700x3d"] * 3          # dudosa incluida; el disipador, fuera
     oferton, normal, dudosa = (a.texto for a in av.avisos)
     assert oferton.startswith("🔥🔥 OFERTÓN 🔥🔥\n🖥️ Ryzen 7 5700X3D · Wallapop · segunda mano")
     assert "70 € por encima de tu máximo (230 €)" in normal
@@ -88,7 +88,7 @@ def test_segunda_mano_va_a_su_tema(grupo, cfg):
     assert "consola" not in " ".join(a.texto.lower() for a in av.avisos)
 
 
-def test_nuevos_van_a_su_tema_y_no_se_mezclan_con_las_consolas(grupo, cfg):
+def test_nuevos_van_al_tema_de_su_pieza_y_no_se_mezclan_con_las_consolas(grupo, cfg):
     motor, av = grupo
     chollos = [chollo("1", "Sapphire Pulse Radeon RX 9070 16GB", 579),
                chollo("2", "PowerColor Reaper RX 9070", 640),
@@ -96,28 +96,45 @@ def test_nuevos_van_a_su_tema_y_no_se_mezclan_con_las_consolas(grupo, cfg):
                chollo("4", "PS5 Slim Digital", 399)]
     pasada(motor, chollos, cfg.producto("RX 9070"), fuente="chollometro")
     pasada(motor, chollos, cfg.producto("PS5"), fuente="chollometro")
-    assert av.categorias == ["pc_nuevo", "pc_nuevo", "nueva_oferton"]
+    assert av.categorias == ["pc_rx-9070", "pc_rx-9070", "nueva_oferton"]
     assert av.avisos[0].texto.startswith("🔥🔥 OFERTÓN 🔥🔥\n🖥️ RX 9070 · Chollometro · nuevo")
     assert av.avisos[1].texto.startswith("💰 BUEN PRECIO\n🖥️ RX 9070")
     assert av.avisos[2].texto.startswith("🔥🔥 OFERTÓN 🔥🔥\n🎮 PS5")
 
 
-def test_indices_de_los_temas_de_pc(grupo, cfg):
+def test_nuevo_y_usado_de_una_pieza_van_al_mismo_tema(grupo, cfg):
+    motor, av = grupo
+    gpu = cfg.producto("RX 9070")
+    pasada(motor, [wp("u", "Sapphire Pulse RX 9070", 500)], gpu)
+    pasada(motor, [chollo("1", "Radeon RX 9070", 560)], gpu, fuente="chollometro")
+    assert av.categorias == ["pc_rx-9070", "pc_rx-9070"]
+    assert "· segunda mano" in av.avisos[0].texto and "· nuevo" in av.avisos[1].texto
+
+
+def test_un_tema_por_pieza_con_su_indice(grupo, cfg):
     motor, av = grupo
     pasada(motor, [wp("a", "Ryzen 7 5700X3D", 220)], cfg.producto("Ryzen 7 5700X3D"))
-    pasada(motor, [chollo("1", "Radeon RX 9070", 560)], cfg.producto("RX 9070"), fuente="chollometro")
+    gpu = cfg.producto("RX 9070")
+    pasada(motor, [wp("u", "Sapphire Pulse RX 9070", 500)], gpu)
+    pasada(motor, [chollo("1", "Radeon RX 9070", 560)], gpu, fuente="chollometro")
     motor._actualizar_indices()
-    assert set(av.indices) == set(avisos.CATEGORIAS)
-    assert av.indices["pc_usado"].startswith("📌 <b>🖥️ Componentes PC · ♻️ Segunda mano</b>")
-    assert "Ryzen 7 5700X3D" in av.indices["pc_usado"]
-    assert "RX 9070" in av.indices["pc_nuevo"] and "RX 9070" not in av.indices["pc_usado"]
+    piezas = {k: v[0] for k, v in avisos.CATEGORIAS.items() if k.startswith("pc_")}
+    assert piezas == {"pc_ryzen-7-5700x3d": "🖥️ Ryzen 7 5700X3D", "pc_ryzen-7-5800x3d": "🖥️ Ryzen 7 5800X3D",
+                      "pc_ryzen-5-5600": "🖥️ Ryzen 5 5600", "pc_rx-9060-xt-16gb": "🖥️ RX 9060 XT 16GB",
+                      "pc_rx-9070": "🖥️ RX 9070"}
+    assert set(av.indices) == set(avisos.CATEGORIAS)                 # un índice por tema
+    cpu = av.indices["pc_ryzen-7-5700x3d"]
+    assert cpu.startswith("📌 <b>🖥️ Ryzen 7 5700X3D</b>") and "220 €</b> · ♻️ usada" in cpu
+    idx = av.indices["pc_rx-9070"]
+    assert "560 €</b> · 🆕 nueva" in idx and "500 €</b> · ♻️ usada" in idx
+    assert "RX 9070" not in cpu
 
 
 def test_seccion():
-    assert avisos.seccion(True, "oferton", componente=True) == "pc_nuevo"
-    assert avisos.seccion(False, "resto", dudosa=True, componente=True) == "pc_usado"
+    assert avisos.seccion(True, "oferton", pieza="RX 9070") == "pc_rx-9070"
+    assert avisos.seccion(False, "resto", dudosa=True, pieza="Ryzen 5 5600") == "pc_ryzen-5-5600"
     assert avisos.seccion(False, "resto", dudosa=True) == "revisar"
-    assert {"pc_nuevo", "pc_usado"} <= set(avisos.CATEGORIAS)
+    assert avisos.seccion_pieza("RX 9060 XT 16GB") == "pc_rx-9060-xt-16gb"
 
 
 def test_minimo_se_aplica_a_lo_enviado_en_temas_de_pc(grupo, cfg, estado):

@@ -26,8 +26,8 @@ avisos:
   comprobar_estado: true # vuelve a mirar los anuncios avisados y marca ❌ los vendidos/retirados
   dias_seguimiento: 3    # días que se siguen los anuncios y salen en el índice de cada tema
 
-# Grupo de Telegram con temas (🔥 Ofertones, 💰 Buen precio, 🏷️ Resto, y para las piezas de PC
-# 🖥️ Componentes PC · 🆕 Nuevos y 🖥️ Componentes PC · ♻️ Segunda mano).
+# Grupo de Telegram con temas (🔥 Ofertones, 💰 Buen precio, 🏷️ Resto, y un tema 🖥️ por cada
+# pieza de PC, con lo nuevo y lo usado juntos).
 # Si pones aquí el id del grupo (empieza por -100), las ofertas van al grupo, cada una a su tema.
 # El bot crea los temas solo; los mensajes del sistema siguen yendo a tu chat privado.
 telegram:
@@ -118,6 +118,7 @@ excluir_descripcion_comun:
   - 'solo (vendo )?la caja'
 
 # ── Qué es una pieza de PC (productos con "tipo: componente") ──────────────────
+# Cada pieza tiene su propio tema en el grupo («🖥️ Ryzen 7 5700X3D»...), con lo nuevo y lo usado.
 # Igual que con las consolas: ✅ la pieza → a su tema · ❓ dudosa → a su tema, marcada · 🚫 fuera.
 componentes:
   # 1) DESCARTAR siempre: portátiles, PCs montados, consolas portátiles...
@@ -196,7 +197,7 @@ productos:
       min: 300
       max: 699
 
-  # ── Piezas de PC (temas 🖥️ Componentes PC · 🆕 Nuevos / ♻️ Segunda mano) ─────
+  # ── Piezas de PC (cada una en su propio tema 🖥️ del grupo) ─────────────────────
   # Procesadores AM4 para tu ROG Strix B550-F (actualiza la BIOS antes de cambiar el procesador).
   # Con lo escaso que va, el 5700X3D nuevo ha estado entre 265 y 330 €.
   - nombre: Ryzen 7 5700X3D
