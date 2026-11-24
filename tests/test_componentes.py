@@ -179,3 +179,33 @@ def test_cashconverters_sin_filtro_de_consolas():
     assert [a.titulo for a in cashconverters.parsear(pagina)] == ["Consola ps5 slim"]
     assert [a.titulo for a in cashconverters.parsear(pagina, solo_consolas=False)] == [
         "Procesador amd ryzen 7 5700x3d"]
+
+
+def test_game_sin_resultados_no_es_un_fallo():
+    from ofertas.fuentes import game
+
+    class Sesion:
+        def get(self, *a, **k):
+            return type("R", (), {"status_code": 404, "text": ""})()
+
+    assert game.buscar(Sesion(), "5700x3d") == []
+
+
+def test_piezas_se_buscan_solo_hasta_su_tope(grupo, cfg, monkeypatch):
+    from ofertas import motor as m
+    motor, _ = grupo
+    llamadas = {}
+    monkeypatch.setattr(m.wallapop, "buscar",
+                        lambda s, q, lat, lon, pmin, pags, **k: llamadas.setdefault(("w", q), k) and [])
+    monkeypatch.setattr(motor.vinted, "buscar", lambda q, pmin, **k: llamadas.setdefault(("v", q), k) and [])
+    motor._ciclo_wallapop()
+    motor._ciclo_vinted()
+    assert llamadas[("w", "5700x3d")] == {"precio_max": 360} and llamadas[("v", "rx 9070")] == {"precio_max": 750}
+    assert llamadas[("w", "ps5")] == {} and llamadas[("v", "ps5")] == {}     # las consolas, como siempre
+
+
+def test_temas_de_las_piezas_fijados_en_config(cfg):
+    for clave in ("pc_ryzen-7-5700x3d", "pc_ryzen-7-5800x3d", "pc_ryzen-5-5600", "pc_rx-9060-xt-16gb", "pc_rx-9070"):
+        assert clave in cfg.telegram_temas
+    assert sorted(avisos.seccion_pieza(p.nombre) for p in cfg.productos if p.es_componente) == sorted(
+        k for k in cfg.telegram_temas if k.startswith("pc_"))

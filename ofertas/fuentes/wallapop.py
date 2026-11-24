@@ -20,7 +20,8 @@ CABECERAS = {
 
 
 def buscar(sesion, consulta: str, lat: float, lon: float,
-           precio_min: float | None = None, paginas: int = 1) -> list[Anuncio]:
+           precio_min: float | None = None, paginas: int = 1,
+           precio_max: float | None = None) -> list[Anuncio]:
     """Devuelve los anuncios más recientes para `consulta` (40 por página)."""
     params = {
         "keywords": consulta,
@@ -31,6 +32,8 @@ def buscar(sesion, consulta: str, lat: float, lon: float,
     }
     if precio_min:
         params["min_sale_price"] = int(precio_min)
+    if precio_max:
+        params["max_sale_price"] = int(precio_max)
 
     anuncios: list[Anuncio] = []
     for pagina in range(max(1, paginas)):

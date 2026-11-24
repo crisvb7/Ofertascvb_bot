@@ -33,7 +33,9 @@ avisos:
 telegram:
   grupo_id: "-1004319446143"
   nombre: Ofertas        # el bot le pone este nombre al grupo (necesita «Cambiar información del grupo»)
-  temas: {nueva_oferton: 57, nueva_buen_precio: 58, usada_oferton: 3, usada_buen_precio: 7, usada_resto: 12}
+  temas: {nueva_oferton: 57, nueva_buen_precio: 58, usada_oferton: 3, usada_buen_precio: 7, usada_resto: 12,
+          pc_ryzen-7-5700x3d: 3120, pc_ryzen-7-5800x3d: 3121, pc_ryzen-5-5600: 3122,
+          pc_rx-9060-xt-16gb: 3123, pc_rx-9070: 3124}
 
 # Cada cuánto se mira cada sitio (minutos). No lo bajes mucho o te bloquearán.
 # En GitHub Actions el bot no puede ir más rápido que el cron de .github/workflows/bot.yml.

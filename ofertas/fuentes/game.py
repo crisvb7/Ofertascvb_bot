@@ -22,6 +22,8 @@ _USADO = re.compile(r"(?i)seminuev|segunda mano|reacondicionad|usad")
 def buscar(sesion, consulta: str) -> list[Anuncio]:
     slug = re.sub(r"[^a-z0-9]+", "-", consulta.lower()).strip("-")
     r = sesion.get(f"{BASE}/buscar/{slug}", timeout=30, headers={"Accept": "text/html,application/xhtml+xml"})
+    if r.status_code == 404:
+        return []                          # GAME responde 404 cuando la búsqueda no tiene resultados
     if r.status_code in (401, 403, 429):
         raise Bloqueado(f"GAME respondió {r.status_code}")
     r.raise_for_status()

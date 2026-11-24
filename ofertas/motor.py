@@ -324,12 +324,19 @@ class Motor:
             time.sleep(random.uniform(*self.pausa))
 
     # --- fuentes ----------------------------------------------------------
+    @staticmethod
+    def _hasta(prod: Producto) -> dict:
+        """Piezas de PC: buscar solo hasta su tope, para que los PCs montados (que llevan la misma
+        pieza en el título y cuestan más) no se coman los 40 resultados de la búsqueda."""
+        return {"precio_max": prod.tope} if prod.es_componente and prod.tope else {}
+
     def _ciclo_wallapop(self) -> None:
         for prod in self.cfg.productos:
             encontrados: list[Anuncio] = []
             for q in prod.busquedas:
                 encontrados += wallapop.buscar(self.sesion, q, self.cfg.lat, self.cfg.lon,
-                                               prod.usado_min, self.cfg.paginas_wallapop)
+                                               prod.usado_min, self.cfg.paginas_wallapop,
+                                               **self._hasta(prod))
                 self._dormir()
             self.procesar(encontrados, prod, "wallapop")
 
@@ -337,7 +344,7 @@ class Motor:
         for prod in self.cfg.productos:
             encontrados: list[Anuncio] = []
             for q in prod.busquedas:
-                encontrados += self.vinted.buscar(q, prod.usado_min)
+                encontrados += self.vinted.buscar(q, prod.usado_min, **self._hasta(prod))
                 self._dormir()
             self.procesar(encontrados, prod, "vinted")
 

@@ -24,10 +24,13 @@ class Vinted:
         self.s = sesion
         self.base = f"https://{dominio}"
 
-    def buscar(self, consulta: str, precio_min: float | None = None) -> list[Anuncio]:
+    def buscar(self, consulta: str, precio_min: float | None = None,
+               precio_max: float | None = None) -> list[Anuncio]:
         params = {"search_text": consulta, "order": "newest_first"}
         if precio_min:
             params.update(price_from=int(precio_min), currency="EUR")
+        if precio_max:
+            params.update(price_to=int(precio_max), currency="EUR")
         r = self.s.get(self.base + "/catalog", params=params, timeout=30,
                        headers={"Accept": "text/html,application/xhtml+xml"})
         if r.status_code in (401, 403, 429):
