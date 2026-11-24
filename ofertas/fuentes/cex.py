@@ -15,7 +15,8 @@ CABECERAS = {"Content-Type": "application/json; charset=UTF-8", "Accept": "appli
              "Origin": "https://es.webuy.com", "Referer": "https://es.webuy.com/"}
 
 
-def buscar(sesion, consulta: str, por_pagina: int = 50) -> list[Anuncio]:
+def buscar(sesion, consulta: str, por_pagina: int = 50, solo_consolas: bool = True) -> list[Anuncio]:
+    """`solo_consolas=False` para piezas de PC: no filtra por la categoría de consolas."""
     params = urlencode({"query": consulta, "hitsPerPage": por_pagina, "page": 0,
                         "filters": "boxVisibilityOnWeb=1"})
     cuerpo = {"requests": [{"indexName": INDICE, "params": params}]}
@@ -24,15 +25,17 @@ def buscar(sesion, consulta: str, por_pagina: int = 50) -> list[Anuncio]:
         raise Bloqueado(f"CeX respondió {r.status_code}")
     r.raise_for_status()
     hits = ((r.json().get("results") or [{}])[0]).get("hits") or []
-    return [a for a in map(a_anuncio, hits) if a]
+    return [a for a in (a_anuncio(h, solo_consolas) for h in hits) if a]
 
 
-def a_anuncio(h: dict) -> Anuncio | None:
+def a_anuncio(h: dict, solo_consolas: bool = True) -> Anuncio | None:
     if not isinstance(h, dict) or not h.get("boxId"):
         return None
     categoria = str(h.get("categoryFriendlyName") or "").lower()
-    if "consola" not in categoria:          # fuera juegos, mandos y accesorios
+    if solo_consolas and "consola" not in categoria:   # fuera juegos, mandos y accesorios
         return None
+    if not solo_consolas and any(x in categoria for x in ("portatil", "portátil", "consola", "juego")):
+        return None                          # pieza de PC: fuera portátiles, consolas y juegos
     tiendas = [t.strip() for t in (h.get("stores") or []) if isinstance(t, str) and t.strip()]
     online = bool(h.get("inStockOnline")) or (h.get("ecomQuantity") or 0) > 0
     if not online and not tiendas:

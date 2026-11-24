@@ -268,7 +268,8 @@ def test_ritmo_y_fallos_sobreviven_entre_ejecuciones(cfg, estado, avisador, monk
 
     n_wallapop = sum(1 for f, _ in llamadas if f == "wallapop")
     n_vinted = sum(1 for f, _ in llamadas if f == "vinted")
-    assert n_wallapop == 7 * 3               # 3 búsquedas en cada ejecución
+    busquedas = sum(len(p.busquedas) for p in cfg.productos)
+    assert n_wallapop == 7 * busquedas       # todas las búsquedas en cada ejecución
     assert n_vinted == 3                     # bloqueado: a los 0, 20 y 60 min (freno x2, x4...)
     assert int(estado.leer("castigo:vinted")) > 1
     assert int(estado.leer("fallos:vinted")) >= 1
@@ -320,7 +321,7 @@ def test_diagnostico(cfg, avisador, monkeypatch):
     assert "Wallapop · PS5: 3 anuncios recibidos, 2 válidos, el más barato 330 € (tu máximo: 380 €)" in texto
     assert "Wallapop · Xbox Series X: 2 anuncios recibidos, 1 válidos, el más barato 420 €" in texto
     assert "❌ Vinted: me bloquea (Vinted respondió 403)" in texto
-    assert "Chollometro: 4 chollos nuevos en el feed; de consolas → PS5: 1, Xbox Series X: 1" in texto
+    assert "Chollometro: 4 chollos nuevos en el feed; por producto → PS5: 1, Xbox Series X: 1" in texto
     assert len(lineas) >= 5
 
 

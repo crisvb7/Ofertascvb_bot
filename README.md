@@ -3,7 +3,7 @@
 Vigila **Wallapop**, **Vinted**, **CeX**, **Cash Converters**, las tiendas **Carrefour**, **GAME** y
 **El Corte Inglés** (buscando directamente en ellas), **Chollometro** (chollos de cualquier tienda: Amazon,
 MediaMarkt, PcComponentes…) y, si quieres, **fichas concretas de tiendas** (precio y stock). Te avisa por **Telegram** y/o **WhatsApp** cuando
-aparece una PS5 o una Xbox Series X a buen precio.
+aparece una PS5 o una Xbox Series X a buen precio, y también **piezas de PC** (ver más abajo).
 
 **Cómo avisa**
 
@@ -26,6 +26,18 @@ anuncios de toda Europa):
 - ❓ **Dudosa** → tema **Revisar**, con el motivo: menciona un juego o accesorio sin decir que sea la
   consola, habla de cambio, de avería o "modo seguro", o pide leer el anuncio. Así no se salta ninguna.
 También descarta los anuncios reservados y los de fuera de tu radio sin envío.
+
+**Piezas de PC 🖥️.** Los productos con `tipo: componente` en `config.yaml` (ahora: Ryzen 7 5700X3D,
+Ryzen 7 5800X3D, Ryzen 5 5600, RX 9060 XT 16GB y RX 9070) van a **dos temas propios** del grupo:
+- **🖥️ Componentes PC · 🆕 Nuevos**: Chollometro (PcComponentes, Amazon, Coolmod…), Carrefour,
+  El Corte Inglés y GAME.
+- **🖥️ Componentes PC · ♻️ Segunda mano**: Wallapop, Vinted, CeX y Cash Converters.
+
+Cada mensaje lleva su 🔥 OFERTÓN / 💰 BUEN PRECIO como con las consolas, y el índice fijado de cada tema.
+Se reconocen por el título con las reglas del bloque `componentes`: fuera portátiles, PCs montados y
+lo que empieza por un accesorio ("Disipador para…", "Placa B550…"); marcados ❓ los packs con placa
+o RAM, los cambios, los averiados o los usados para minar. Para vigilar otra pieza, copia uno de
+esos bloques y cambia el nombre, las búsquedas, el `incluir` y los precios.
 
 **Anuncios falsos fuera** (solo segunda mano). No te llega un anuncio si:
 - el vendedor de Wallapop **no tiene ninguna valoración**, o su **cuenta se creó menos de 30 días** antes

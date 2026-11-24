@@ -95,14 +95,15 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
                 lineas.append(_error("Vinted", e))
                 break
 
-    from .motor import SIMPLES
+    from .motor import SIMPLES, consultas_simples
     for clave, (modulo, de_tienda) in SIMPLES.items():
         if not cfg.activa(clave):
             continue
         nombre = avisos.ETIQUETA_FUENTE.get(clave, clave)
         for prod in cfg.productos:
             try:
-                res = modulo.buscar(sesion, f"consola {prod.busquedas[0]}" if de_tienda else prod.busquedas[0])
+                consultas, extra = consultas_simples(clave, prod, de_tienda)
+                res = modulo.buscar(sesion, consultas[0], **extra)
                 lineas.append(_linea(nombre, prod, res))
             except Exception as e:
                 lineas.append(_error(nombre, e))
@@ -114,7 +115,7 @@ def ejecutar(cfg: Config, avisador: avisos.Avisador) -> list[str]:
             for url in cfg.feeds_chollometro:
                 chollos += chollometro.leer(sesion, url)
             partes = [f"{p.nombre}: {len(_validos(chollos, p))}" for p in cfg.productos]
-            lineas.append(f"✅ Chollometro: {len(chollos)} chollos nuevos en el feed; de consolas → "
+            lineas.append(f"✅ Chollometro: {len(chollos)} chollos nuevos en el feed; por producto → "
                           + ", ".join(partes))
         except Exception as e:
             lineas.append(_error("Chollometro", e))

@@ -28,11 +28,18 @@ class Producto:
     pistas_consola: list[re.Pattern] = field(default_factory=list)
     dudas: list[re.Pattern] = field(default_factory=list)
     otros_productos: list[re.Pattern] = field(default_factory=list)   # "incluir" del resto de productos
+    tipo: str = "consola"               # consola | componente (pieza de PC)
+
+    @property
+    def es_componente(self) -> bool:
+        return self.tipo == "componente"
 
     def clasificar(self, a: Anuncio) -> tuple[str | None, str]:
-        """('consola', '') si es esta consola; ('dudosa', motivo) si no está claro; (None, '') si no.
+        """('consola', '') si es este producto; ('dudosa', motivo) si no está claro; (None, '') si no.
 
-        Ante la duda se manda (marcada para revisar) en vez de saltársela."""
+        Ante la duda se manda (marcada para revisar) en vez de saltársela. En los componentes
+        solo cuenta el accesorio con el que EMPIEZA el título ("Disipador para Ryzen 7 5700X3D");
+        uno mencionado en medio ("Ryzen 7 5700X3D con disipador") no los hace dudosos."""
         t = normalizar(a.titulo)
         propias = [m.start() for p in self.incluir for m in [p.search(t)] if m]
         if not propias:
@@ -61,7 +68,7 @@ class Producto:
             return None, ""
         if duda:
             return "dudosa", f"pone «{duda.group(0).strip()}»"
-        if acc and not pista:
+        if acc and not pista and not self.es_componente:
             return "dudosa", f"habla de «{acc.group(0).strip()}» y no dice claramente que sea la consola"
         return "consola", ""
 
@@ -149,26 +156,43 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
     datos = yaml.safe_load(Path(ruta).read_text(encoding="utf-8")) or {}
     exc_comun = datos.get("excluir_comun") or []
     exc_desc = datos.get("excluir_descripcion_comun") or []
-    accesorios = _regex(datos.get("accesorios") or [])
-    pistas = _regex(datos.get("pistas_consola") or [])
-    dudas = _regex(datos.get("dudas") or [])
+    # Cada tipo de producto tiene sus propias reglas para decidir si el anuncio es "la cosa":
+    # las consolas usan los bloques de arriba de config.yaml; las piezas de PC, el bloque "componentes".
+    comp = datos.get("componentes") or {}
+    reglas = {
+        "consola": dict(excluir=[], excluir_descripcion=[],
+                        accesorios=_regex(datos.get("accesorios") or []),
+                        pistas=_regex(datos.get("pistas_consola") or []),
+                        dudas=_regex(datos.get("dudas") or [])),
+        "componente": dict(excluir=comp.get("excluir") or [],
+                           excluir_descripcion=comp.get("excluir_descripcion") or [],
+                           accesorios=_regex(comp.get("accesorios") or []),
+                           pistas=_regex(comp.get("pistas") or []),
+                           dudas=_regex(comp.get("dudas") or [])),
+    }
 
     productos = []
     for p in datos.get("productos") or []:
         usado = p.get("segunda_mano") or {}
         nuevo = p.get("nuevo") or {}
+        tipo = str(p.get("tipo") or "consola").strip().lower()
+        if tipo not in reglas:
+            raise ValueError(f"El producto {p['nombre']} tiene un tipo que no existe: {tipo} "
+                             "(usa «consola» o «componente»)")
+        r = reglas[tipo]
         productos.append(Producto(
             nombre=p["nombre"],
             busquedas=p.get("busquedas") or [p["nombre"]],
             incluir=_regex(p.get("incluir") or [re.escape(normalizar(p["nombre"]))]),
-            excluir=_regex(exc_comun + (p.get("excluir") or [])),
-            excluir_descripcion=_regex(exc_desc + (p.get("excluir_descripcion") or [])),
+            excluir=_regex(exc_comun + r["excluir"] + (p.get("excluir") or [])),
+            excluir_descripcion=_regex(exc_desc + r["excluir_descripcion"] + (p.get("excluir_descripcion") or [])),
             usado_min=usado.get("min"), usado_max=usado.get("max"),
             nuevo_min=nuevo.get("min"), nuevo_max=nuevo.get("max"),
             tope=p.get("tope"),
-            accesorios=accesorios,
-            pistas_consola=pistas,
-            dudas=dudas,
+            accesorios=r["accesorios"],
+            pistas_consola=r["pistas"],
+            dudas=r["dudas"],
+            tipo=tipo,
         ))
     if not productos:
         raise ValueError("config.yaml no tiene ningún producto en 'productos'")

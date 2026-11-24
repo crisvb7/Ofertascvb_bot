@@ -1,8 +1,9 @@
 """Envío de avisos: Telegram (recomendado) y/o WhatsApp vía CallMeBot.
 
 Con un grupo de Telegram con temas, cada oferta va al tema de su categoría
-(🔥 Ofertones, 💰 Buen precio, 🏷️ Resto), los mensajes se actualizan cuando el anuncio
-se vende o cambia de precio, y cada tema tiene un índice fijado con lo más nuevo arriba.
+(🔥 Ofertones, 💰 Buen precio, 🏷️ Resto; las piezas de PC, a sus dos temas de nuevos y de
+segunda mano), los mensajes se actualizan cuando el anuncio se vende o cambia de precio, y
+cada tema tiene un índice fijado con lo más nuevo arriba.
 """
 from __future__ import annotations
 
@@ -38,12 +39,20 @@ CATEGORIAS = {
     "usada_buen_precio": ("♻️ Segunda mano · 💰 Buen precio", 16766590),
     "usada_resto": ("♻️ Segunda mano · 🏷️ Resto", 7322096),
     "revisar": ("❓ Revisar · ¿es consola?", 16749490),
+    # Piezas de PC: un tema para lo nuevo y otro para lo de segunda mano (todas las categorías juntas)
+    "pc_nuevo": ("🖥️ Componentes PC · 🆕 Nuevos", 9367192),
+    "pc_usado": ("🖥️ Componentes PC · ♻️ Segunda mano", 16766590),
 }
+SECCIONES_NUEVAS = ("nueva_oferton", "nueva_buen_precio", "pc_nuevo")
+SECCIONES_USADAS = ("usada_oferton", "usada_buen_precio", "usada_resto", "pc_usado")
 
 
-def seccion(nuevo: bool, categoria: str, dudosa: bool = False) -> str:
+def seccion(nuevo: bool, categoria: str, dudosa: bool = False, componente: bool = False) -> str:
     """'oferton' + nueva -> 'nueva_oferton'. Las nuevas no tienen 'resto' (pasan del tope).
-    Lo que no está claro que sea una consola va siempre a 'revisar'."""
+    Lo que no está claro que sea una consola va siempre a 'revisar'. Las piezas de PC van a
+    'pc_nuevo' o 'pc_usado' (las dudosas también, marcadas en el propio mensaje)."""
+    if componente:
+        return "pc_nuevo" if nuevo else "pc_usado"
     if dudosa:
         return "revisar"
     clave = f"{'nueva' if nuevo else 'usada'}_{categoria}"
@@ -365,18 +374,20 @@ CABECERAS = {
 
 def formatear(a, producto: str, motivo: str, mediana: float | None = None, muestras: int = 0,
               distancia: float | None = None, sospechoso: bool = False,
-              categoria: str = "resto", duda: str = "", vendedor: str = "") -> Aviso:
+              categoria: str = "resto", duda: str = "", vendedor: str = "",
+              componente: bool = False) -> Aviso:
     e = html.escape
     fuente = ETIQUETA_FUENTE.get(a.fuente, a.fuente)
-    tipo = "nueva" if a.nuevo else "segunda mano"
+    tipo = ("nuevo" if componente else "nueva") if a.nuevo else "segunda mano"
+    pregunta = "¿ES LA PIEZA SUELTA?" if componente else "¿ES UNA CONSOLA?"
     h, t = [], []
     if duda:
-        h.append("❓ <b>¿ES UNA CONSOLA?</b> Revísalo tú")
-        t.append("❓ ¿ES UNA CONSOLA? Revísalo tú")
+        h.append(f"❓ <b>{pregunta}</b> Revísalo tú")
+        t.append(f"❓ {pregunta} Revísalo tú")
     if categoria in CABECERAS:
         h.append(CABECERAS[categoria][0])
         t.append(CABECERAS[categoria][1])
-    icono = "🎮" if categoria in CABECERAS else "🏷️"
+    icono = ("🖥️" if componente else "🎮") if categoria in CABECERAS else "🏷️"
     h.append(f"{icono} <b>{e(producto)}</b> · {e(fuente)} · {tipo}")
     t.append(f"{icono} {producto} · {fuente} · {tipo}")
     h.append(f"💶 <b>{euros(a.precio)}</b> — {e(a.titulo[:150])}")

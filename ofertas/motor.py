@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 FUENTES = ("wallapop", "vinted", "cex", "cashconverters", "carrefour", "game", "elcorteingles",
            "chollometro", "tiendas")
 # fuentes que solo necesitan (sesión, búsqueda); True = buscar "consola <producto>" una vez
+# (las piezas de PC se buscan por su nombre, sin "consola")
 SIMPLES = {
     "cex": (cex, False),
     "cashconverters": (cashconverters, False),
@@ -28,7 +29,17 @@ SIMPLES = {
     "game": (game, True),
     "elcorteingles": (elcorteingles, True),
 }
+# estas dos filtran por su categoría de consolas; con las piezas de PC se les quita ese filtro
+SOLO_CONSOLAS = ("cex", "cashconverters")
 FALLOS_PARA_AVISAR = 6
+
+
+def consultas_simples(fuente: str, prod: Producto, de_tienda: bool) -> tuple[list[str], dict]:
+    """Qué buscar en una fuente simple para este producto y con qué opciones."""
+    if prod.es_componente:
+        extra = {"solo_consolas": False} if fuente in SOLO_CONSOLAS else {}
+        return (prod.busquedas[:1] if de_tienda else prod.busquedas), extra
+    return ([f"consola {prod.busquedas[0]}"] if de_tienda else prod.busquedas), {}
 
 
 @dataclass
@@ -117,11 +128,13 @@ class Motor:
         tope = self.cfg.max_por_pasada
         enviar, resto = (orden[:tope], orden[tope:]) if tope else (orden, [])
         for a, v, dist, producto in enviar:
+            prod = self.cfg.producto(producto)
+            pieza = bool(prod and prod.es_componente)
             aviso = avisos.formatear(a, producto, v.motivo, v.mediana, v.muestras, dist,
                                      v.sospechoso, categoria=v.categoria, duda=v.duda,
-                                     vendedor=v.vendedor)
+                                     vendedor=v.vendedor, componente=pieza)
             anterior = self.estado.mensaje(a.clave)
-            sec = avisos.seccion(a.nuevo, v.categoria, bool(v.duda))
+            sec = avisos.seccion(a.nuevo, v.categoria, bool(v.duda), componente=pieza)
             ref = self.avisador.enviar_oferta(aviso, sec)
             if ref is None:
                 continue
@@ -211,9 +224,9 @@ class Motor:
             if not prod or f["precio"] is None:
                 continue
             cat = f["categoria"] or ""
-            if cat.startswith("nueva"):
+            if cat in avisos.SECCIONES_NUEVAS:
                 pmin = prod.nuevo_min
-            elif cat.startswith("usada"):
+            elif cat in avisos.SECCIONES_USADAS:
                 pmin = prod.usado_min
             else:                                   # Revisar: no sabemos si es nueva o usada
                 pmin = min((x for x in (prod.usado_min, prod.nuevo_min) if x is not None), default=None)
@@ -324,10 +337,10 @@ class Motor:
     def _ciclo_simple(self, fuente: str) -> None:
         modulo, de_tienda = SIMPLES[fuente]
         for prod in self.cfg.productos:
-            consultas = [f"consola {prod.busquedas[0]}"] if de_tienda else prod.busquedas
+            consultas, extra = consultas_simples(fuente, prod, de_tienda)
             encontrados: list[Anuncio] = []
             for q in consultas:
-                encontrados += modulo.buscar(self.sesion, q)
+                encontrados += modulo.buscar(self.sesion, q, **extra)
                 self._dormir()
             self.procesar(encontrados, prod, fuente)
 
@@ -458,8 +471,9 @@ class Motor:
         log.info("%s · %s: %s, stock=%s", t.nombre, prod.nombre, euros(precio), en_stock)
         if motivo:
             cat = "oferton" if buen_precio else "buen_precio"
-            aviso = avisos.formatear(a, prod.nombre, motivo, categoria=cat)
-            if self.avisador.enviar_oferta(aviso, avisos.seccion(True, cat)) is not None:
+            aviso = avisos.formatear(a, prod.nombre, motivo, categoria=cat, componente=prod.es_componente)
+            sec = avisos.seccion(True, cat, componente=prod.es_componente)
+            if self.avisador.enviar_oferta(aviso, sec) is not None:
                 self.avisos_enviados += 1
 
     def _mandar(self, aviso: avisos.Aviso) -> bool:

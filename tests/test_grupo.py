@@ -197,18 +197,19 @@ def test_migracion_de_categorias_antiguas(tmp_path):
 
 
 def test_preparar_temas_crea_los_que_faltan_y_renombra(monkeypatch, estado):
-    crea = [{"ok": True, "result": {"message_thread_id": 20 + i}} for i in range(5)]
+    crea = [{"ok": True, "result": {"message_thread_id": 20 + i}} for i in range(7)]
     # orden de las secciones: nueva_oferton, nueva_buen_precio, usada_oferton (ya existe: renombrar), ...
     respuestas = crea[:2] + [{"ok": True, "result": True}] + crea[2:]
     t = tg(respuestas, monkeypatch)
     av = Avisador([], telegram=t, grupo_id="-100123", estado=estado, temas={"usada_oferton": 3})
     av.preparar_temas()
     metodos = [m for m, _ in t.s.llamadas]
-    assert metodos.count("createForumTopic") == 5 and metodos.count("editForumTopic") == 1
+    assert metodos.count("createForumTopic") == 7 and metodos.count("editForumTopic") == 1
     nombres = [d["name"] for m, d in t.s.llamadas]
     assert "🆕 Nuevas · 🔥 Ofertones" in nombres and "♻️ Segunda mano · 🔥 Ofertones" in nombres
+    assert "🖥️ Componentes PC · 🆕 Nuevos" in nombres and "🖥️ Componentes PC · ♻️ Segunda mano" in nombres
     av.preparar_temas()                                                           # segunda vez: nada
-    assert len(t.s.llamadas) == 6
+    assert len(t.s.llamadas) == 8
     assert "❓ Revisar · ¿es consola?" in nombres
 
 
@@ -245,6 +246,9 @@ def test_config_real_no_baja_de_300():
     from ofertas import config
     from conftest import RAIZ
     for p in config.cargar(RAIZ / "config.yaml").productos:
+        if p.es_componente:            # las piezas de PC tienen sus propios precios
+            assert 0 < p.usado_min < p.usado_max < p.tope and 0 < p.nuevo_min < p.nuevo_max < p.tope, p.nombre
+            continue
         assert p.usado_min >= 300 and p.nuevo_min >= 300, p.nombre
 
 

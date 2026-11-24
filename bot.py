@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bot de ofertas de consolas: Wallapop, Vinted, Chollometro y tiendas → Telegram/WhatsApp.
+"""Bot de ofertas de consolas y piezas de PC: Wallapop, Vinted, Chollometro y tiendas → Telegram/WhatsApp.
 
 Uso:
   python bot.py                 # funciona sin parar (lo normal)
@@ -32,7 +32,7 @@ log = logging.getLogger("bot")
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Bot de ofertas de consolas")
+    ap = argparse.ArgumentParser(description="Bot de ofertas de consolas y piezas de PC")
     ap.add_argument("--config", default=str(RAIZ / "config.yaml"))
     ap.add_argument("--env", default=str(RAIZ / ".env"))
     ap.add_argument("--una-vez", action="store_true", help="una pasada (respetando el ritmo de cada fuente) y salir")

@@ -15,19 +15,20 @@ _TILE = re.compile(r'class="product-tile[^"]*" data-pid="([^"]+)" data-product-d
 _IMG = re.compile(r'class="tile-image" src="([^"]+)"')
 
 
-def buscar(sesion, consulta: str) -> list[Anuncio]:
+def buscar(sesion, consulta: str, solo_consolas: bool = True) -> list[Anuncio]:
+    """`solo_consolas=False` para piezas de PC: no filtra por la categoría de consolas."""
     r = sesion.get(f"{BASE}/es/es/search/", params={"q": consulta, "srule": "most-recent", "sz": 48},
                    timeout=30, headers={"Accept": "text/html,application/xhtml+xml"})
     if r.status_code in (401, 403, 429):
         raise Bloqueado(f"Cash Converters respondió {r.status_code}")
     r.raise_for_status()
-    return parsear(r.text)
+    return parsear(r.text, solo_consolas)
 
 
-def parsear(pagina: str) -> list[Anuncio]:
+def parsear(pagina: str, solo_consolas: bool = True) -> list[Anuncio]:
     """Una entrada por modelo/precio/estado: muchas tiendas venden la misma consola al mismo precio."""
     grupos: dict[str, Anuncio] = {}
-    for a in _unidades(pagina):
+    for a in _unidades(pagina, solo_consolas):
         clave = f"{a.titulo.lower()}|{a.precio}|{(a.estado or '').lower()}"
         if clave in grupos:
             g = grupos[clave]
@@ -40,7 +41,7 @@ def parsear(pagina: str) -> list[Anuncio]:
     return list(grupos.values())
 
 
-def _unidades(pagina: str) -> list[Anuncio]:
+def _unidades(pagina: str, solo_consolas: bool = True) -> list[Anuncio]:
     marcas = list(_TILE.finditer(pagina))
     anuncios = []
     for i, m in enumerate(marcas):
@@ -52,8 +53,11 @@ def _unidades(pagina: str) -> list[Anuncio]:
             continue
         tramos = str(datos.get("category") or "").lower().split("/")[1:]   # sin "videojuegos y consolas"
         nombre = str(datos.get("name") or "").lower()
-        if not any("consola" in t for t in tramos) and not nombre.startswith("consola"):
+        es_consola = any("consola" in t for t in tramos) or nombre.startswith("consola")
+        if solo_consolas and not es_consola:
             continue                          # fuera juegos, mandos y accesorios
+        if not solo_consolas and (es_consola or any(x in t for t in tramos for x in ("portatil", "portátil", "videojuego"))):
+            continue                          # pieza de PC: fuera consolas, portátiles y juegos
         img = _IMG.search(trozo)
         pid = m.group(1)
         anuncios.append(Anuncio(
