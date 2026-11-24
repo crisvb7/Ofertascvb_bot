@@ -114,6 +114,7 @@ class Config:
     dias_seguimiento: float = 3         # cuántos días se siguen e indexan los avisos
     telegram_grupo_id: str | None = None
     telegram_temas: dict = field(default_factory=dict)
+    telegram_nombre_grupo: str | None = None
     intervalos: dict = field(default_factory=dict)
     fuentes: dict = field(default_factory=dict)
     feeds_chollometro: list[str] = field(default_factory=list)
@@ -230,6 +231,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
         dias_seguimiento=float(av.get("dias_seguimiento", 3)),
         telegram_grupo_id=str(env("TELEGRAM_GRUPO_ID") or tg.get("grupo_id") or "") or None,
         telegram_temas={k: v for k, v in (tg.get("temas") or {}).items() if v},
+        telegram_nombre_grupo=str(tg.get("nombre") or "").strip() or None,
         intervalos={"wallapop": 5, "vinted": 10, "cex": 30, "cashconverters": 30, "carrefour": 15,
                     "game": 15, "elcorteingles": 15, "chollometro": 10, "tiendas": 30,
                     **(datos.get("intervalos_min") or {})},

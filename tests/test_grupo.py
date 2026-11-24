@@ -287,3 +287,30 @@ def test_no_manda_nada_por_debajo_de_300(grupo, cfg):
     ps5.usado_min = 300
     pasada(motor, [wp("x", "PS5 Slim 1TB", 299), wp("y", "PS5 Slim 1TB", 300)], ps5)
     assert len(av.categorias) == 1 and "300 €" in av.avisos[0].texto
+
+
+def test_pone_el_nombre_del_grupo_una_vez(monkeypatch, estado):
+    t = tg([{"ok": True, "result": True}], monkeypatch)
+    av = Avisador([], telegram=t, grupo_id="-100123", estado=estado)
+    av.nombrar_grupo("Ofertas")
+    av.nombrar_grupo("Ofertas")                                  # ya lo tiene: no repite
+    assert t.s.llamadas == [("setChatTitle", {"chat_id": "-100123", "title": "Ofertas"})]
+
+
+def test_sin_permiso_para_el_nombre_avisa_una_vez(monkeypatch, estado):
+    sin_permiso = {"ok": False, "description": "Bad Request: not enough rights to change chat title"}
+    t = tg([sin_permiso, sin_permiso], monkeypatch)
+    sistema = []
+    av = Avisador([type("C", (), {"enviar": lambda self, a: sistema.append(a) or True})()],
+                  telegram=t, grupo_id="-100123", estado=estado)
+    av.nombrar_grupo("Ofertas")
+    av.nombrar_grupo("Ofertas")                                  # antes de 1 h no lo reintenta
+    assert len(t.s.llamadas) == 1
+    estado.guardar("grupo_nombre_intento:-100123", time.time() - 3700)
+    av.nombrar_grupo("Ofertas")                                  # lo reintenta, pero no vuelve a avisar
+    assert len(t.s.llamadas) == 2 and len(sistema) == 1
+    assert "Cambiar información del grupo" in sistema[0].texto
+
+
+def test_config_tiene_nombre_de_grupo(cfg):
+    assert cfg.telegram_nombre_grupo == "Ofertas"

@@ -31,7 +31,8 @@ avisos:
 # Si pones aquí el id del grupo (empieza por -100), las ofertas van al grupo, cada una a su tema.
 # El bot crea los temas solo; los mensajes del sistema siguen yendo a tu chat privado.
 telegram:
-  grupo_id: "-1004319446143"   # «Ofertas PS5 y XBOX»
+  grupo_id: "-1004319446143"
+  nombre: Ofertas        # el bot le pone este nombre al grupo (necesita «Cambiar información del grupo»)
   temas: {nueva_oferton: 57, nueva_buen_precio: 58, usada_oferton: 3, usada_buen_precio: 7, usada_resto: 12}
 
 # Cada cuánto se mira cada sitio (minutos). No lo bajes mucho o te bloquearán.

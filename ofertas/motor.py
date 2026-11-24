@@ -291,6 +291,10 @@ class Motor:
         """La primera vez que se usa un grupo, vuelve a mandar lo que sigue publicado."""
         if not self.avisador.con_grupo:
             return
+        try:
+            self.avisador.nombrar_grupo(self.cfg.telegram_nombre_grupo)
+        except Exception:
+            log.exception("Error poniendo el nombre del grupo")
         clave = f"grupo_estrenado:{self.avisador.grupo_id}"
         if not self.estado.leer(clave):
             self.estado.olvidar_avisos()

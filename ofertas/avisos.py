@@ -171,6 +171,11 @@ class Telegram:
         log.warning("No he podido renombrar el tema %s: %s", thread_id, j.get("description"))
         return False
 
+    def renombrar_grupo(self, chat_id: str, nombre: str) -> tuple[bool, str]:
+        j = self._llamar("setChatTitle", {"chat_id": chat_id, "title": nombre}, chat_id)
+        desc = j.get("description") or ""
+        return bool(j.get("ok")) or "not modified" in desc.lower(), desc
+
     def crear_tema(self, chat_id: str, nombre: str, color: int) -> int | None:
         j = self._llamar("createForumTopic", {"chat_id": chat_id, "name": nombre, "icon_color": color}, chat_id)
         if j.get("ok"):
@@ -312,6 +317,28 @@ class Avisador:
             self.estado.guardar(f"tema_nombre:{self.grupo_id}:{categoria}", nombre)
             log.info("Tema creado en el grupo: %s (id %s)", nombre, tid)
         return tid
+
+    def nombrar_grupo(self, nombre: str | None) -> None:
+        """Pone al grupo el nombre de config.yaml (una vez; se repite si lo cambias)."""
+        if not (nombre and self.con_grupo and self.estado):
+            return
+        clave = f"grupo_nombre:{self.grupo_id}"
+        intento = f"grupo_nombre_intento:{self.grupo_id}"
+        if self.estado.leer(clave) == nombre or time.time() - float(self.estado.leer(intento, "0")) < 3600:
+            return                                  # ya lo tiene, o se intentó hace menos de 1 h
+        self.estado.guardar(intento, time.time())
+        ok, desc = self.telegram.renombrar_grupo(self.grupo_id, nombre)
+        if ok:
+            self.estado.guardar(clave, nombre)
+            log.info("Nombre del grupo: %s", nombre)
+            return
+        log.warning("No he podido poner el nombre «%s» al grupo: %s", nombre, desc)
+        aviso = f"no_nombre:{self.grupo_id}:{nombre}"
+        if not self.estado.leer(aviso):           # avisa una sola vez
+            self.estado.guardar(aviso, "1")
+            txt = (f"⚠️ No he podido cambiar el nombre del grupo a «{nombre}» ({desc}). "
+                   "Dale al bot el permiso de administrador «Cambiar información del grupo».")
+            self.enviar(Aviso(html=html.escape(txt), texto=txt))
 
     def preparar_temas(self) -> None:
         """Crea los temas que falten y pone a cada uno su nombre actual (una vez)."""

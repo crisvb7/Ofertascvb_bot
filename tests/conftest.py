@@ -48,6 +48,9 @@ class AvisadorFalso:
     def preparar_temas(self):
         self.temas_preparados = True
 
+    def nombrar_grupo(self, nombre):
+        self.nombre_grupo = nombre
+
 
 @pytest.fixture
 def cfg(monkeypatch):
