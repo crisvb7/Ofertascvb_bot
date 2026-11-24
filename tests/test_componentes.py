@@ -211,7 +211,8 @@ def test_piezas_se_buscan_solo_hasta_su_tope(grupo, cfg, monkeypatch):
 
 
 def test_temas_de_las_piezas_fijados_en_config(cfg):
-    for clave in ("pc_ryzen-7-5700x3d", "pc_ryzen-7-5800x3d", "pc_ryzen-5-5600", "pc_rx-9060-xt-16gb", "pc_rx-9070"):
+    for clave in ("pc_ryzen-7-5700x3d", "pc_ryzen-7-5800x3d", "pc_ryzen-5-5600", "pc_rx-9060-xt-16gb", "pc_rx-9070",
+                  "pc_rx-9070-xt"):
         assert clave in cfg.telegram_temas
     # los fijados son de piezas que existen (una pieza nueva aún no tiene id: el bot le crea el tema)
     piezas = {avisos.seccion_pieza(p.nombre) for p in cfg.productos if p.es_componente}
