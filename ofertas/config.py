@@ -190,8 +190,10 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
             usado_min=usado.get("min"), usado_max=usado.get("max"),
             nuevo_min=nuevo.get("min"), nuevo_max=nuevo.get("max"),
             tope=p.get("tope"),
-            accesorios=r["accesorios"],
-            pistas_consola=r["pistas"],
+            # un producto puede traer su propia lista (p. ej. la RAM o la placa, que para el
+            # resto de piezas son "accesorios")
+            accesorios=_regex(p["accesorios"]) if "accesorios" in p else r["accesorios"],
+            pistas_consola=_regex(p["pistas"]) if "pistas" in p else r["pistas"],
             dudas=r["dudas"],
             tipo=tipo,
         ))

@@ -31,7 +31,7 @@ def chollo(id_, titulo, precio, tienda="PcComponentes"):
 def test_los_componentes_se_cargan_como_tales(cfg):
     piezas = [p.nombre for p in cfg.productos if p.es_componente]
     assert piezas == ["Ryzen 7 5700X3D", "Ryzen 7 5800X3D", "Ryzen 5 5600", "RX 9060 XT 16GB", "RX 9070",
-                      "RX 9070 XT"]
+                      "Ryzen 7 9800X3D", "DDR5 32GB", "Placa B650/B850", "RX 9070 XT"]
     assert not cfg.producto("PS5").es_componente
 
 
@@ -75,6 +75,28 @@ def test_los_componentes_se_cargan_como_tales(cfg):
     ("RX 9070 XT", "Radeon RX9070-XT", C),
     ("RX 9070 XT", "RX 9070 16GB", F),                              # la no XT va a su tema
     ("RX 9070 XT", "PC gaming Ryzen 7 9800X3D RX 9070 XT", F),
+    ("Ryzen 7 9800X3D", "AMD Ryzen 7 9800X3D 4.7/5.2GHz", C),
+    ("Ryzen 7 9800X3D", "Ryzen 7 9800X3D + B650 + 32GB DDR5", D),     # pack: a revisar
+    ("Ryzen 7 9800X3D", "PC gaming 9800X3D RX 9070 XT", F),
+    ("Ryzen 7 9800X3D", "Ryzen 7 7800X3D", F),
+    ("DDR5 32GB", "Corsair Vengeance DDR5 6000MHz 32GB 2x16GB CL30", C),
+    ("DDR5 32GB", "Memoria RAM DDR5 32GB (2x16)", C),
+    ("DDR5 32GB", "RAM DDR5 2x16GB 6000", C),
+    ("DDR5 32GB", "Kit 32GB DDR5 G.Skill Trident Z5", C),
+    ("DDR5 32GB", "DDR5 16GB 4800", F),
+    ("DDR5 32GB", "SO-DIMM DDR5 32GB portátil", F),
+    ("DDR5 32GB", "DDR5 64GB 2x32", F),
+    ("DDR5 32GB", "DDR4 32GB 3200", F),
+    ("DDR5 32GB", "Placa B650 + 32GB DDR5", F),                      # es la placa
+    ("Placa B650/B850", "Gigabyte B650 Eagle", C),
+    ("Placa B650/B850", "ASUS TUF GAMING B650-PLUS WIFI", C),
+    ("Placa B650/B850", "Placa base B650M Pro RS", C),
+    ("Placa B650/B850", "ASUS Prime B850M-F WiFi", C),
+    ("Placa B650/B850", "B650 + Ryzen 7 7600", D),
+    ("Placa B650/B850", "Placa B550 AM4", F),
+    ("Placa B650/B850", "ASUS PRIME A620M-K", F),
+    ("Placa B650/B850", "Memoria DDR5 para B650", F),
+    ("Placa B650/B850", "Ryzen 7 9800X3D + B650", F),                # es el procesador
     ("PS5", "Cambio RX 9070 por PS5", F),                            # se vende la gráfica
 ])
 def test_clasifica_componentes(cfg, producto, titulo, esperado):
@@ -127,7 +149,9 @@ def test_un_tema_por_pieza_con_su_indice(grupo, cfg):
     piezas = {k: v[0] for k, v in avisos.CATEGORIAS.items() if k.startswith("pc_")}
     assert piezas == {"pc_ryzen-7-5700x3d": "🖥️ Ryzen 7 5700X3D", "pc_ryzen-7-5800x3d": "🖥️ Ryzen 7 5800X3D",
                       "pc_ryzen-5-5600": "🖥️ Ryzen 5 5600", "pc_rx-9060-xt-16gb": "🖥️ RX 9060 XT 16GB",
-                      "pc_rx-9070": "🖥️ RX 9070", "pc_rx-9070-xt": "🖥️ RX 9070 XT"}
+                      "pc_rx-9070": "🖥️ RX 9070", "pc_rx-9070-xt": "🖥️ RX 9070 XT",
+                      "pc_ryzen-7-9800x3d": "🖥️ Ryzen 7 9800X3D", "pc_ddr5-32gb": "🖥️ DDR5 32GB",
+                      "pc_placa-b650-b850": "🖥️ Placa B650/B850"}
     assert set(av.indices) == set(avisos.CATEGORIAS)                 # un índice por tema
     cpu = av.indices["pc_ryzen-7-5700x3d"]
     assert cpu.startswith("📌 <b>🖥️ Ryzen 7 5700X3D</b>") and "220 €</b> · ♻️ usada" in cpu
@@ -156,8 +180,8 @@ def test_tiendas_buscan_la_pieza_sin_consola(cfg):
     from ofertas.motor import consultas_simples
     ps5, cpu = cfg.producto("PS5"), cfg.producto("Ryzen 7 5700X3D")
     assert consultas_simples("carrefour", ps5, True) == (["consola ps5"], {})
-    assert consultas_simples("carrefour", cpu, True) == (["5700x3d"], {})
-    assert consultas_simples("cex", cpu, False) == (["5700x3d"], {"solo_consolas": False})
+    assert consultas_simples("carrefour", cpu, True) == (["ryzen 7 5700x3d"], {})
+    assert consultas_simples("cex", cpu, False) == (["ryzen 7 5700x3d", "5700x3d"], {"solo_consolas": False})
     assert consultas_simples("cex", ps5, False) == (["ps5", "playstation 5"], {})
 
 

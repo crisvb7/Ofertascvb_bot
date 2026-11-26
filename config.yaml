@@ -149,8 +149,9 @@ componentes:
     - '\b(minado|mineria|mining|minar)\b'
     - '^\W*(cambio|intercambio|echange|scambio|tausch|troca)\b'
     - '\b(cambio|intercambio)\s+(por|x)\b'
-    - '\b(pack|kit|combo|lote)\b'
-    - '\+\s*(placa|b450|b550|x570|a520|ram|memoria|ddr4|ddr5|fuente)'
+    - '\b(pack|combo|lote)\b'          # "kit" no: la RAM se vende como "kit 2x16GB"
+    - '\+\s*(placa|b450|b550|b650|b850|x570|a520|a620|ram|memoria|ddr4|ddr5|fuente)'
+    - '\+\s*(ryzen|procesador|cpu|micro|rx|rtx|grafica)\b'
     - '\b(con|y|incluye)\s+(placa|b450|b550|x570|a520|memoria ram|ram|ddr4|ddr5)\b'
     - '\b(lire|lisez|leer|lee|leggere|leggi|ler|leia|read)\b.{0,20}\b(annonce|anuncio|annuncio|description|descripcion|descrizione|descricao)\b'
 
@@ -205,7 +206,7 @@ productos:
   # Con lo escaso que va, el 5700X3D nuevo ha estado entre 265 y 330 €.
   - nombre: Ryzen 7 5700X3D
     tipo: componente
-    busquedas: ["5700x3d"]
+    busquedas: ["ryzen 7 5700x3d", "5700x3d"]
     incluir: ['\b5700\s?x3d\b']
     tope: 360      # nunca te manda nada más caro que esto
     segunda_mano:
@@ -218,7 +219,7 @@ productos:
   # Reedición de 2026, nuevo sobre 360 €.
   - nombre: Ryzen 7 5800X3D
     tipo: componente
-    busquedas: ["5800x3d"]
+    busquedas: ["ryzen 7 5800x3d", "5800x3d"]
     incluir: ['\b5800\s?x3d\b']
     tope: 420
     segunda_mano: {min: 170, max: 290}
@@ -252,6 +253,41 @@ productos:
     tope: 750
     segunda_mano: {min: 380, max: 520}
     nuevo: {min: 450, max: 590}
+
+  # ── Piezas para un PC nuevo AM5 (Ryzen 7 9800X3D) ─────────────────────────────
+  # El 9800X3D lo has visto nuevo a 375,99 €; su mínimo anterior fue 424,88 €.
+  - nombre: Ryzen 7 9800X3D
+    tipo: componente
+    busquedas: ["ryzen 7 9800x3d", "9800x3d"]
+    incluir: ['\b9800\s?x3d\b']
+    tope: 460
+    segunda_mano: {min: 230, max: 330}
+    nuevo: {min: 280, max: 380}
+
+  # 32 GB de DDR5 de sobremesa (mejor 2x16 a 6000 CL30, pero vale cualquiera).
+  # Fuera las de portátil (SO-DIMM) y las de 16 o 64 GB.
+  - nombre: DDR5 32GB
+    tipo: componente
+    busquedas: ["ddr5 32gb"]
+    incluir: ['\bddr5\b(?=.*\b(32\s?gb?|2\s?x\s?16\s?gb?)\b)|\b(32\s?gb?|2\s?x\s?16\s?gb?)\b(?=.*\bddr5\b)']
+    excluir: ['\bso-?dimm\b', '\bsodimm\b', '\b(portatil|laptop|notebook)\b', '\b64\s?gb?\b', '\b2\s?x\s?32', '\becc\b', '\bddr4\b']
+    accesorios: ['\b(disipador(es)?|ventilador(es)?|refrigeracion|cables?|fundas?|pegatinas?|cajas?|placas?|motherboard|procesador|cpu|grafica|tarjeta grafica|ssd|disco|portatil|pc|ordenador|torre)\b']
+    pistas: ['\b(kit|memoria|ram|dimm|udimm|corsair|kingston|fury|vengeance|g\.?skill|trident|ripjaws|crucial|teamgroup|team group|t-?force|adata|xpg|lexar|patriot|forgeon|goodram)\b']
+    tope: 520
+    segunda_mano: {min: 120, max: 300}
+    nuevo: {min: 180, max: 400}
+
+  # Placas AM5 B650 / B850 (A620 y X670/X870 fuera: unas flojas, otras caras).
+  - nombre: Placa B650/B850
+    tipo: componente
+    busquedas: ["placa b650", "b650m"]
+    incluir: ['\bb[68]50(e|m)?\b']
+    excluir: ['\b(am4|b550|b450|x570)\b']
+    accesorios: ['\b(disipador(es)?|ventilador(es)?|refrigeracion|cables?|fundas?|pegatinas?|antenas?|backplates?|memorias?|ram|ddr5|procesador|cpu|ryzen|grafica|tarjeta grafica|ssd|disco|pc|ordenador|torre)\b']
+    pistas: ['\b(placa|placa base|motherboard|asus|msi|gigabyte|aorus|asrock|biostar|tuf|prime|tomahawk|eagle|steel legend|pro rs|gaming)\b']
+    tope: 180
+    segunda_mano: {min: 50, max: 100}
+    nuevo: {min: 70, max: 110}
 
   # La RX 9070 XT. En 2026 ha estado entre 640 y 725 € nueva.
   - nombre: RX 9070 XT
