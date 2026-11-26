@@ -16,12 +16,19 @@ def grupo(cfg, estado):
     from ofertas.motor import Motor
     av = AvisadorFalso(con_grupo=True)
     # límites fijos para los tests (así se pueden cambiar los de config.yaml sin romperlos)
-    limites = {"Ryzen 7 5700X3D": (150, 230, 180, 270, 360), "RX 9070": (380, 520, 450, 590, 750)}
+    limites = {"Ryzen 7 9800X3D": (150, 230, 180, 270, 360), "RX 9070": (380, 520, 450, 590, 750)}
     for p in cfg.productos:
         if p.nombre in limites:
             p.usado_min, p.usado_max, p.nuevo_min, p.nuevo_max, p.tope = limites[p.nombre]
             p.precio_nuevo = None    # la regla de "usada casi al precio de nueva" va en test_grupo_pc
     return Motor(cfg, estado, av, pausa=(0, 0)), av
+
+
+@pytest.fixture
+def cfg_todo():
+    from ofertas import config
+    from conftest import RAIZ
+    return config.cargar(RAIZ / "config.yaml", incluir_retirados=True)
 
 
 def chollo(id_, titulo, precio, tienda="PcComponentes"):
@@ -31,9 +38,10 @@ def chollo(id_, titulo, precio, tienda="PcComponentes"):
 
 def test_los_componentes_se_cargan_como_tales(cfg):
     piezas = [p.nombre for p in cfg.productos if p.es_componente]
-    assert piezas == ["Ryzen 7 5700X3D", "Ryzen 7 5800X3D", "Ryzen 5 5600", "RX 9060 XT 16GB", "RX 9070",
-                      "Ryzen 7 9800X3D", "DDR5 32GB", "Placa B650/B850", "RX 9070 XT",
-                      "Fuente 850W Gold", "Disipador doble torre", "SSD NVMe 1TB"]
+    assert piezas == ["RX 9060 XT 16GB", "RX 9070", "Ryzen 7 9800X3D", "DDR5 32GB", "Placa B650/B850",
+                      "RX 9070 XT", "Fuente 850W Gold", "Disipador doble torre", "SSD NVMe 1TB"]
+    # las AM4 no valen para el PC nuevo (AM5 + DDR5): ya no se buscan
+    assert cfg.productos_retirados == ["Ryzen 7 5700X3D", "Ryzen 7 5800X3D", "Ryzen 5 5600"]
     assert not cfg.producto("PS5").es_componente
 
 
@@ -101,18 +109,18 @@ def test_los_componentes_se_cargan_como_tales(cfg):
     ("Placa B650/B850", "Ryzen 7 9800X3D + B650", F),                # es el procesador
     ("PS5", "Cambio RX 9070 por PS5", F),                            # se vende la gráfica
 ])
-def test_clasifica_componentes(cfg, producto, titulo, esperado):
-    assert cfg.producto(producto).clasificar(wp("1", titulo, 300))[0] == esperado
+def test_clasifica_componentes(cfg_todo, producto, titulo, esperado):
+    assert cfg_todo.producto(producto).clasificar(wp("1", titulo, 300))[0] == esperado
 
 
 def test_segunda_mano_va_a_su_tema(grupo, cfg):
     motor, av = grupo
-    cpu = cfg.producto("Ryzen 7 5700X3D")
-    pasada(motor, [wp("a", "AMD Ryzen 7 5700X3D", 220), wp("b", "Ryzen 7 5700X3D", 300),
-                   wp("c", "Ryzen 7 5700X3D + placa B550", 340), wp("d", "Disipador 5700X3D", 160)], cpu)
-    assert av.categorias == ["pc_ryzen-7-5700x3d"] * 3          # dudosa incluida; el disipador, fuera
+    cpu = cfg.producto("Ryzen 7 9800X3D")
+    pasada(motor, [wp("a", "AMD Ryzen 7 9800X3D", 220), wp("b", "Ryzen 7 9800X3D", 300),
+                   wp("c", "Ryzen 7 9800X3D + placa B650", 340), wp("d", "Disipador 9800X3D", 160)], cpu)
+    assert av.categorias == ["pc_ryzen-7-9800x3d"] * 3          # dudosa incluida; el disipador, fuera
     oferton, normal, dudosa = (a.texto for a in av.avisos)
-    assert oferton.startswith("🔥🔥 OFERTÓN 🔥🔥\n🖥️ Ryzen 7 5700X3D · Wallapop · segunda mano")
+    assert oferton.startswith("🔥🔥 OFERTÓN 🔥🔥\n🖥️ Ryzen 7 9800X3D · Wallapop · segunda mano")
     assert "70 € por encima de tu máximo (230 €)" in normal
     assert dudosa.startswith("❓ ¿ES LA PIEZA SUELTA? Revísalo tú")
     assert "consola" not in " ".join(a.texto.lower() for a in av.avisos)
@@ -143,21 +151,20 @@ def test_nuevo_y_usado_de_una_pieza_van_al_mismo_tema(grupo, cfg):
 
 def test_un_tema_por_pieza_con_su_indice(grupo, cfg):
     motor, av = grupo
-    pasada(motor, [wp("a", "Ryzen 7 5700X3D", 220)], cfg.producto("Ryzen 7 5700X3D"))
+    pasada(motor, [wp("a", "Ryzen 7 9800X3D", 220)], cfg.producto("Ryzen 7 9800X3D"))
     gpu = cfg.producto("RX 9070")
     pasada(motor, [wp("u", "Sapphire Pulse RX 9070", 500)], gpu)
     pasada(motor, [chollo("1", "Radeon RX 9070", 560)], gpu, fuente="chollometro")
     motor._actualizar_indices()
     piezas = {k: v[0] for k, v in avisos.CATEGORIAS.items() if k.startswith("pc_")}
-    assert piezas == {"pc_ryzen-7-5700x3d": "🖥️ Ryzen 7 5700X3D", "pc_ryzen-7-5800x3d": "🖥️ Ryzen 7 5800X3D",
-                      "pc_ryzen-5-5600": "🖥️ Ryzen 5 5600", "pc_rx-9060-xt-16gb": "🖥️ RX 9060 XT 16GB",
-                      "pc_rx-9070": "🖥️ RX 9070", "pc_rx-9070-xt": "🖥️ RX 9070 XT",
+    assert piezas == {"pc_rx-9060-xt-16gb": "🖥️ RX 9060 XT 16GB", "pc_rx-9070": "🖥️ RX 9070",
                       "pc_ryzen-7-9800x3d": "🖥️ Ryzen 7 9800X3D", "pc_ddr5-32gb": "🖥️ DDR5 32GB",
-                      "pc_placa-b650-b850": "🖥️ Placa B650/B850", "pc_fuente-850w-gold": "🖥️ Fuente 850W Gold",
+                      "pc_placa-b650-b850": "🖥️ Placa B650/B850", "pc_rx-9070-xt": "🖥️ RX 9070 XT",
+                      "pc_fuente-850w-gold": "🖥️ Fuente 850W Gold",
                       "pc_disipador-doble-torre": "🖥️ Disipador doble torre", "pc_ssd-nvme-1tb": "🖥️ SSD NVMe 1TB"}
     assert set(av.indices) == set(avisos.CATEGORIAS)                 # un índice por tema
-    cpu = av.indices["pc_ryzen-7-5700x3d"]
-    assert cpu.startswith("📌 <b>🖥️ Ryzen 7 5700X3D</b>") and "220 €</b> · ♻️ usada" in cpu
+    cpu = av.indices["pc_ryzen-7-9800x3d"]
+    assert cpu.startswith("📌 <b>🖥️ Ryzen 7 9800X3D</b>") and "220 €</b> · ♻️ usada" in cpu
     idx = av.indices["pc_rx-9070"]
     assert "560 €</b> · 🆕 nueva" in idx and "500 €</b> · ♻️ usada" in idx
     assert "RX 9070" not in cpu
@@ -172,8 +179,8 @@ def test_seccion():
 
 def test_minimo_se_aplica_a_lo_enviado_en_temas_de_pc(grupo, cfg, estado):
     motor, av = grupo
-    cpu = cfg.producto("Ryzen 7 5700X3D")
-    pasada(motor, [wp("a", "Ryzen 7 5700X3D", 160)], cpu)
+    cpu = cfg.producto("Ryzen 7 9800X3D")
+    pasada(motor, [wp("a", "Ryzen 7 9800X3D", 160)], cpu)
     cpu.usado_min = 170
     motor._quitar_baratos_enviados()
     assert av.borrados == [1]
@@ -181,10 +188,10 @@ def test_minimo_se_aplica_a_lo_enviado_en_temas_de_pc(grupo, cfg, estado):
 
 def test_tiendas_buscan_la_pieza_sin_consola(cfg):
     from ofertas.motor import consultas_simples
-    ps5, cpu = cfg.producto("PS5"), cfg.producto("Ryzen 7 5700X3D")
+    ps5, cpu = cfg.producto("PS5"), cfg.producto("Ryzen 7 9800X3D")
     assert consultas_simples("carrefour", ps5, True) == (["consola ps5"], {})
-    assert consultas_simples("carrefour", cpu, True) == (["ryzen 7 5700x3d"], {})
-    assert consultas_simples("cex", cpu, False) == (["ryzen 7 5700x3d", "5700x3d"], {"solo_consolas": False})
+    assert consultas_simples("carrefour", cpu, True) == (["ryzen 7 9800x3d"], {})
+    assert consultas_simples("cex", cpu, False) == (["ryzen 7 9800x3d", "9800x3d"], {"solo_consolas": False})
     assert consultas_simples("cex", ps5, False) == (["ps5", "playstation 5"], {})
 
 
@@ -233,14 +240,14 @@ def test_piezas_se_buscan_solo_hasta_su_tope(grupo, cfg, monkeypatch):
     monkeypatch.setattr(motor.vinted, "buscar", lambda q, pmin, **k: llamadas.setdefault(("v", q), k) and [])
     motor._ciclo_wallapop()
     motor._ciclo_vinted()
-    assert llamadas[("w", "5700x3d")] == {"precio_max": 360} and llamadas[("v", "rx 9070")] == {"precio_max": 750}
+    assert llamadas[("w", "9800x3d")] == {"precio_max": 360} and llamadas[("v", "rx 9070")] == {"precio_max": 750}
     assert llamadas[("w", "ps5")] == {} and llamadas[("v", "ps5")] == {}     # las consolas, como siempre
 
 
 def test_temas_de_las_piezas_fijados_en_config(cfg):
-    for clave in ("pc_ryzen-7-5700x3d", "pc_ryzen-7-5800x3d", "pc_ryzen-5-5600", "pc_rx-9060-xt-16gb", "pc_rx-9070",
-                  "pc_rx-9070-xt"):
-        assert clave in cfg.telegram_temas
-    # los fijados son de piezas que existen (una pieza nueva aún no tiene id: el bot le crea el tema)
+    # cada pieza que se busca tiene su tema fijado en el grupo de piezas
     piezas = {avisos.seccion_pieza(p.nombre) for p in cfg.productos if p.es_componente}
-    assert {k for k in cfg.telegram_temas if k.startswith("pc_")} <= piezas
+    retiradas = {avisos.seccion_pieza(n) for n in cfg.productos_retirados}
+    fijados = set(cfg.telegram_temas_pc)
+    assert piezas <= fijados <= piezas | retiradas
+    assert cfg.telegram_grupo_pc_id and cfg.telegram_grupo_pc_id.startswith("-100")

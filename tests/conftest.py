@@ -24,6 +24,7 @@ class AvisadorFalso:
         self.grupo_id = "-100123" if con_grupo else None
         self.grupo_pc_id = None
         self.movidos = {}         # categoría -> aviso de "se ha pasado al grupo de piezas"
+        self.retirados = {}       # categoría -> aviso de "ya no se busca"
         self._n = 0
 
     def enviar(self, aviso):
@@ -55,6 +56,9 @@ class AvisadorFalso:
 
     def indice_movido(self, categoria, html):
         self.movidos[categoria] = html
+
+    def indice_retirado(self, categoria, html):
+        self.retirados[categoria] = html
 
 
 @pytest.fixture

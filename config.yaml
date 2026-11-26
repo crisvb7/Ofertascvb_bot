@@ -42,9 +42,11 @@ telegram:
   # Grupo aparte para las piezas de PC, con un tema por pieza. Sin id, el bot lo busca solo
   # entre los grupos en los que está, por este nombre (o uno que diga "componentes").
   grupo_pc:
-    id:
+    id: "-1005758860776"
     nombre: PC Components
-    temas: {}
+    temas: {pc_ssd-nvme-1tb: 3, pc_ryzen-5-5600: 6, pc_ddr5-32gb: 12, pc_ryzen-7-5700x3d: 14,
+            pc_ryzen-7-5800x3d: 15, pc_rx-9060-xt-16gb: 16, pc_rx-9070: 17, pc_ryzen-7-9800x3d: 18,
+            pc_placa-b650-b850: 19, pc_rx-9070-xt: 20, pc_fuente-850w-gold: 21, pc_disipador-doble-torre: 22}
 
 # Cada cuánto se mira cada sitio (minutos). No lo bajes mucho o te bloquearán.
 # En GitHub Actions el bot no puede ir más rápido que el cron de .github/workflows/bot.yml.
@@ -214,6 +216,7 @@ productos:
   # Procesadores AM4 para tu ROG Strix B550-F (actualiza la BIOS antes de cambiar el procesador).
   # Con lo escaso que va, el 5700X3D nuevo ha estado entre 265 y 330 €.
   - nombre: Ryzen 7 5700X3D
+    activo: false  # AM4: no vale para el PC nuevo (AM5 + DDR5)
     tipo: componente
     busquedas: ["ryzen 7 5700x3d", "5700x3d"]
     incluir: ['\b5700\s?x3d\b']
@@ -228,6 +231,7 @@ productos:
 
   # Reedición de 2026, nuevo sobre 360 €.
   - nombre: Ryzen 7 5800X3D
+    activo: false  # AM4: no vale para el PC nuevo (AM5 + DDR5)
     tipo: componente
     busquedas: ["ryzen 7 5800x3d", "5800x3d"]
     incluir: ['\b5800\s?x3d\b']
@@ -238,6 +242,7 @@ productos:
 
   # La opción barata (nuevo sobre 155 €). Vale también el 5600X/5600T/5600XT; fuera el 5600G y el 5600X3D.
   - nombre: Ryzen 5 5600
+    activo: false  # AM4: no vale para el PC nuevo (AM5 + DDR5)
     tipo: componente
     busquedas: ["ryzen 5 5600"]
     incluir: ['\b(ryzen|r5)\s?-?\s?5?\s?-?\s?5600(x|t|xt)?\b']
@@ -256,6 +261,11 @@ productos:
     precio_nuevo: 480  # lo que cuesta nueva ahora (noviembre 2026)
     segunda_mano: {min: 300, max: 400}
     nuevo: {min: 360, max: 470}
+    compatibilidad:
+      siempre:
+        - "✅ PCIe: va en cualquier placa B650/B850 (y también en tu B550)"
+        - "⚠️ Mira que quepa en tu caja: estas gráficas miden entre 28 y 34 cm"
+        - "⚡ Con la fuente de 850 W del equipo va sobrada"
 
   # La RX 9070 (sin XT ni GRE).
   - nombre: RX 9070
@@ -267,6 +277,11 @@ productos:
     precio_nuevo: 650  # lo que cuesta nueva ahora (noviembre 2026)
     segunda_mano: {min: 380, max: 520}
     nuevo: {min: 450, max: 590}
+    compatibilidad:
+      siempre:
+        - "✅ PCIe: va en cualquier placa B650/B850 (y también en tu B550)"
+        - "⚠️ Mira que quepa en tu caja: estas gráficas miden entre 28 y 34 cm"
+        - "⚡ Con la fuente de 850 W del equipo va sobrada"
 
   # ── Piezas para un PC nuevo AM5 (Ryzen 7 9800X3D) ─────────────────────────────
   # El 9800X3D lo has visto nuevo a 375,99 €; su mínimo anterior fue 424,88 €.
@@ -278,6 +293,13 @@ productos:
     precio_nuevo: 376  # lo que cuesta nueva ahora (noviembre 2026)
     segunda_mano: {min: 230, max: 330}
     nuevo: {min: 280, max: 380}
+    compatibilidad:
+      siempre:
+        - "✅ AM5: va con cualquier placa B650/B850 con BIOS para Ryzen 9000 y con RAM DDR5"
+        - "ℹ️ No trae disipador: necesita uno de doble torre"
+      senales:
+        - si: '\btray\b'
+          texto: "⚠️ Versión «tray» (sin caja): mira qué garantía te dan"
 
   # 32 GB de DDR5 de sobremesa (mejor 2x16 a 6000 CL30, pero vale cualquiera).
   # Fuera las de portátil (SO-DIMM) y las de 16 o 64 GB.
@@ -292,6 +314,17 @@ productos:
     precio_nuevo: 429  # lo que cuesta nueva ahora (noviembre 2026)
     segunda_mano: {min: 120, max: 300}
     nuevo: {min: 180, max: 400}
+    compatibilidad:
+      siempre: "✅ DDR5 de sobremesa: vale para cualquier placa AM5"
+      senales:
+        - si: '\b(6000|6200|6400|6600|6800|7200|8000)\s?(mhz|mt/?s)?\b'
+          texto: "✅ A 6000 MHz o más: lo ideal para el 9800X3D"
+        - si: '\b(4800|5200|5600)\s?(mhz|mt/?s)?\b'
+          texto: "ℹ️ A 4800-5600 MHz funciona, pero rinde algo menos que a 6000"
+        - si: '\b(4800|5200|5600|6000|6200|6400|6600|6800|7200|8000)\s?(mhz|mt/?s)?\b'
+          si_no: "ℹ️ No dice la velocidad: lo ideal es 6000 MHz"
+        - si: '\bexpo\b'
+          texto: "✅ Con perfil EXPO (se activa en la BIOS con un clic)"
 
   # Placas AM5 B650 / B850 (A620 y X670/X870 fuera: unas flojas, otras caras).
   - nombre: Placa B650/B850
@@ -305,6 +338,21 @@ productos:
     precio_nuevo: 84  # lo que cuesta nueva ahora (noviembre 2026)
     segunda_mano: {min: 50, max: 100}
     nuevo: {min: 70, max: 110}
+    compatibilidad:
+      siempre: "✅ AM5 + DDR5: va con el 9800X3D, la RAM DDR5 y cualquier gráfica"
+      nueva: "✅ Nueva: ya suele venir con BIOS para Ryzen 9000"
+      senales:
+        - si: 'flash\s?back|q-?flash|flash bios|bios (actualizada|al dia|nueva)|ryzen 9000|9800x3d|9000 ready'
+          texto: "✅ Dice que tiene la BIOS al día o botón para actualizarla sin procesador"
+          si_no: "⚠️ Pregunta qué BIOS tiene: con una de antes de finales de 2024 no arranca con el 9800X3D, salvo que tenga botón para actualizarla sin procesador (BIOS FlashBack, Q-Flash Plus)"
+          solo: usada
+        - si: '\b(asus|prime|tuf|strix)\b'
+          texto: "✅ Las ASUS Prime, TUF y ROG B650/B850 traen botón BIOS FlashBack"
+        - si: '\b(gigabyte|aorus)\b'
+          texto: "ℹ️ Las Gigabyte B650 suelen traer Q-Flash Plus (actualizar la BIOS sin procesador): confírmalo"
+        - si: '\bb[68]50e?m\b|micro\s?-?atx|\bmatx\b'
+          texto: "ℹ️ Micro ATX: cabe en cualquier caja ATX o micro ATX"
+          si_no: "ℹ️ Si es ATX, mira que tu caja sea ATX"
 
   # La RX 9070 XT. En 2026 ha estado entre 640 y 725 € nueva.
   - nombre: RX 9070 XT
@@ -315,6 +363,14 @@ productos:
     precio_nuevo: 659  # lo que cuesta nueva ahora (noviembre 2026)
     segunda_mano: {min: 450, max: 600}
     nuevo: {min: 550, max: 680}
+    compatibilidad:
+      siempre:
+        - "✅ PCIe: va en cualquier placa B650/B850 (y también en tu B550)"
+        - "⚠️ Mira que quepa en tu caja: estas gráficas miden entre 28 y 34 cm"
+        - "⚡ Pide una fuente de 750-850 W: la de 850 W del equipo vale"
+      senales:
+        - si: '12v-?2x6|12vhpwr|16 ?pines|16-?pin|nitro'
+          texto: "⚡ Usa el conector 12V-2x6: la fuente tiene que traerlo (ATX 3.0/3.1)"
 
   # ── El resto del PC nuevo ─────────────────────────────────────────────────────
   # Fuente de 850 W o más, 80 Plus Gold o mejor (la que pide la RX 9070 XT).
@@ -329,6 +385,15 @@ productos:
     precio_nuevo: 83   # Thermaltake 850 W Gold en PcComponentes
     segunda_mano: {min: 35, max: 60}
     nuevo: {min: 50, max: 80}
+    compatibilidad:
+      siempre: "✅ 850 W: de sobra para el 9800X3D con una RX 9070 XT"
+      usada: "⚠️ Usada: pide que vengan todos los cables originales"
+      senales:
+        - si: 'atx\s?3[.,]?[01]?\b|12v-?2x6|12vhpwr|pcie\s?5'
+          texto: "✅ ATX 3.x: trae el conector 12V-2x6 que usan algunas gráficas"
+          si_no: "ℹ️ Si no es ATX 3.x, mira que traiga 3 cables PCIe de 8 pines para la gráfica"
+        - si: '\bmodular\b'
+          texto: "✅ Modular"
 
   # Disipador de doble torre (o una líquida de 240/360) que aguante el 9800X3D.
   - nombre: Disipador doble torre
@@ -341,6 +406,11 @@ productos:
     precio_nuevo: 34   # Peerless Assassin 120 SE en Amazon
     segunda_mano: {min: 10, max: 25}
     nuevo: {min: 20, max: 32}
+    compatibilidad:
+      siempre:
+        - "✅ AM5 usa los mismos anclajes que AM4: vale para el 9800X3D"
+        - "⚠️ Mira que quepa en tu caja: los de doble torre miden unos 155-160 mm de alto"
+      usada: "⚠️ Usado: pide que traiga todos los anclajes y el backplate"
 
   # SSD NVMe de 1 TB (solo si no reaprovechas el tuyo).
   - nombre: SSD NVMe 1TB
@@ -354,6 +424,14 @@ productos:
     precio_nuevo: 150  # Crucial E100 de 1 TB en PcComponentes
     segunda_mano: {min: 40, max: 90}
     nuevo: {min: 60, max: 110}
+    compatibilidad:
+      siempre: "✅ M.2 NVMe: va en cualquier placa B650/B850"
+      usada: "⚠️ Usado: pide una captura de su estado de salud (CrystalDiskInfo)"
+      senales:
+        - si: '\b(gen\s?5|pcie\s?5)'
+          texto: "ℹ️ PCIe 5.0: en una B650 va a velocidad de PCIe 4.0"
+        - si: '\b(gen\s?3|pcie\s?3)'
+          texto: "ℹ️ PCIe 3.0: más lento, pero de sobra para jugar"
 
   # ¿También te vale una PS5 Pro? Quita los '#' de este bloque.
   # - nombre: PS5 Pro

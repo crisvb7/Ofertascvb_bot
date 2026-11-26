@@ -52,6 +52,13 @@ pasa allí las piezas que siguen publicadas: las borra del grupo principal y dej
 un aviso de que se han mudado. Mientras no existe, las piezas sin tema en el grupo principal te
 llegan al chat privado.
 
+**Todo compatible con el PC nuevo (AM5 + DDR5).** Cada oferta de pieza lleva un apartado
+🔧 *Compatibilidad*: con qué encaja y qué mirar antes de comprarla (la BIOS de una placa usada, la
+velocidad de la RAM, los conectores de la fuente, si cabe en tu caja...). Sale del bloque
+`compatibilidad` de cada pieza en `config.yaml`, con señales que busca en el título y la descripción.
+Las piezas que no encajan (las AM4: 5700X3D, 5800X3D y 5600) están con `activo: false`: no se buscan,
+y su tema dice que ya no se usa.
+
 **Segunda mano que no compensa, fuera.** Una pieza usada solo se manda si sale al menos un
 `avisos.rebaja_minima_usado` (15 %) más barata que nueva: su `precio_nuevo` de `config.yaml`, o lo más
 barato que el bot la haya visto nueva en Chollometro o en las tiendas estos días.

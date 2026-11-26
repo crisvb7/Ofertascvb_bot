@@ -199,3 +199,39 @@ def test_mientras_no_existe_el_grupo_las_piezas_nuevas_van_a_tu_chat(monkeypatch
     av.grupo_pc_id = PIEZAS                                          # ya existe: se crean allí
     t.s.respuestas = [{"ok": True, "result": {"message_thread_id": 9}}]
     assert av.tema("pc_ryzen-7-9800x3d") == 9 and t.s.llamadas[-1][1]["chat_id"] == PIEZAS
+
+
+# --- compatibilidad ------------------------------------------------------------------------
+
+def test_mensaje_de_placa_usada_lleva_la_compatibilidad(motor_y_av, cfg):
+    motor, av = motor_y_av
+    placa = cfg.producto("Placa B650/B850")
+    placa.precio_nuevo = None
+    pasada(motor, [wp("p", "ASUS Prime B650M-R", 70)], placa)
+    texto = av.avisos[0].texto
+    assert "🔧 Compatibilidad" in texto and "va con el 9800X3D" in texto
+    assert "Pregunta qué BIOS tiene" in texto and "botón BIOS FlashBack" in texto
+
+
+@pytest.mark.parametrize("producto,titulo,nuevo,desc,esta,no_esta", [
+    ("Placa B650/B850", "Gigabyte B650 Eagle AX", True, "", "ya suele venir con BIOS", "Pregunta qué BIOS"),
+    ("Placa B650/B850", "MSI PRO B650-P WiFi", False, "BIOS actualizada", "BIOS al día", "Pregunta qué BIOS"),
+    ("DDR5 32GB", "Corsair Vengeance DDR5 6000MHz 32GB CL30 EXPO", True, "", "6000 MHz o más", "No dice la velocidad"),
+    ("DDR5 32GB", "Kingston 32GB DDR5 4800", False, "", "rinde algo menos", "6000 MHz o más"),
+    ("DDR5 32GB", "Memoria RAM DDR5 32GB", False, "", "No dice la velocidad", "EXPO"),
+    ("RX 9070 XT", "Sapphire Nitro+ RX 9070 XT", False, "", "12V-2x6", "nada"),
+    ("Fuente 850W Gold", "MSI MAG A850GL PCIE5 850W Gold", True, "", "ATX 3.x", "3 cables PCIe"),
+    ("Fuente 850W Gold", "Corsair RM850 850W Gold", False, "", "3 cables PCIe", "ATX 3.x: trae"),
+    ("SSD NVMe 1TB", "Crucial T705 1TB Gen5 NVMe", True, "", "PCIe 5.0", "CrystalDiskInfo"),
+])
+def test_notas_de_compatibilidad(cfg, producto, titulo, nuevo, desc, esta, no_esta):
+    a = Anuncio(fuente="x", id="1", titulo=titulo, precio=1, url="u", nuevo=nuevo, descripcion=desc)
+    notas = " | ".join(cfg.producto(producto).notas_compat(a))
+    assert esta in notas and no_esta not in notas
+
+
+def test_las_piezas_retiradas_avisan_en_su_indice(motor_y_av):
+    motor, av = motor_y_av
+    motor._actualizar_indices()
+    assert set(av.retirados) == {"pc_ryzen-7-5700x3d", "pc_ryzen-7-5800x3d", "pc_ryzen-5-5600"}
+    assert "no es compatible con el PC nuevo" in av.retirados["pc_ryzen-5-5600"]

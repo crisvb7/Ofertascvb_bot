@@ -134,7 +134,8 @@ class Motor:
             pieza = bool(prod and prod.es_componente)
             aviso = avisos.formatear(a, producto, v.motivo, v.mediana, v.muestras, dist,
                                      v.sospechoso, categoria=v.categoria, duda=v.duda,
-                                     vendedor=v.vendedor, componente=pieza)
+                                     vendedor=v.vendedor, componente=pieza,
+                                     compat=prod.notas_compat(a) if pieza else ())
             anterior = self.estado.mensaje(a.clave)
             sec = avisos.seccion(a.nuevo, v.categoria, bool(v.duda), pieza=producto if pieza else None)
             ref = self.avisador.enviar_oferta(aviso, sec)
@@ -190,11 +191,15 @@ class Motor:
         for sec in avisos.CATEGORIAS:
             filas = self.estado.mensajes_categoria(sec, self.cfg.dias_seguimiento)
             self.avisador.indice(sec, avisos.construir_indice(sec, filas, self.cfg.dias_seguimiento))
-            if sec.startswith("pc_") and getattr(self.avisador, "grupo_pc_id", None):
+            if sec.startswith("pc_") and getattr(self.avisador, "grupo_pc_id", None) and sec in avisos.CATEGORIAS:
                 nombre = avisos.CATEGORIAS[sec][0]
                 destino = html.escape(self.cfg.telegram_nombre_grupo_pc or "de piezas de PC")
                 self.avisador.indice_movido(sec, f"📌 <b>{html.escape(nombre)}</b>\n"
                                                  f"➡️ Esta sección se ha pasado al grupo «{destino}».")
+        for nombre in self.cfg.productos_retirados:   # piezas que ya no se buscan: lo dice su índice
+            self.avisador.indice_retirado(avisos.seccion_pieza(nombre),
+                                          f"📌 <b>🖥️ {html.escape(nombre)}</b>\n🚫 Ya no la busco: no es "
+                                          "compatible con el PC nuevo (AM5 + DDR5). Puedes borrar este tema.")
 
     def _reclasificar_enviados(self, version: str = "v2") -> None:
         """Pasa el filtro actual por lo ya enviado: marca 🚫 lo que no era una consola
@@ -559,7 +564,8 @@ class Motor:
         log.info("%s · %s: %s, stock=%s", t.nombre, prod.nombre, euros(precio), en_stock)
         if motivo:
             cat = "oferton" if buen_precio else "buen_precio"
-            aviso = avisos.formatear(a, prod.nombre, motivo, categoria=cat, componente=prod.es_componente)
+            aviso = avisos.formatear(a, prod.nombre, motivo, categoria=cat, componente=prod.es_componente,
+                                     compat=prod.notas_compat(a) if prod.es_componente else ())
             sec = avisos.seccion(True, cat, pieza=prod.nombre if prod.es_componente else None)
             if self.avisador.enviar_oferta(aviso, sec) is not None:
                 self.avisos_enviados += 1

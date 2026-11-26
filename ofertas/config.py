@@ -30,6 +30,26 @@ class Producto:
     otros_productos: list[re.Pattern] = field(default_factory=list)   # "incluir" del resto de productos
     tipo: str = "consola"               # consola | componente (pieza de PC)
     precio_nuevo: float | None = None   # lo que cuesta nueva ahora (para juzgar la de segunda mano)
+    compat: dict = field(default_factory=dict)   # notas de compatibilidad con el resto del PC
+
+    def notas_compat(self, a: Anuncio) -> list[str]:
+        """Las líneas de compatibilidad para este anuncio: las de siempre, las de nuevo o usado,
+        y las de cada señal que aparezca (o falte) en el título o la descripción."""
+        c = self.compat
+        if not c:
+            return []
+        lineas = list(c.get("siempre") or [])
+        lineas += list((c.get("nueva") if a.nuevo else c.get("usada")) or [])
+        texto = normalizar(f"{a.titulo} {a.descripcion or ''}")
+        for s in c.get("senales") or []:
+            if s.get("solo") and s["solo"] != ("nueva" if a.nuevo else "usada"):
+                continue
+            if s["si"].search(texto):
+                if s.get("texto"):
+                    lineas.append(s["texto"])
+            elif s.get("si_no"):
+                lineas.append(s["si_no"])
+        return lineas
 
     @property
     def es_componente(self) -> bool:
@@ -116,6 +136,7 @@ class Config:
     telegram_grupo_id: str | None = None
     telegram_temas: dict = field(default_factory=dict)
     telegram_nombre_grupo: str | None = None
+    productos_retirados: list = field(default_factory=list)   # piezas que ya no se buscan
     # grupo aparte para las piezas de PC (si no hay id, el bot lo busca por el nombre)
     telegram_grupo_pc_id: str | None = None
     telegram_nombre_grupo_pc: str | None = None
@@ -154,12 +175,25 @@ def cargar_env(ruta: str | Path = ".env") -> None:
         os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 
+def _compat(c: dict) -> dict:
+    """Notas de compatibilidad de config.yaml; cada línea puede ser texto o lista de textos."""
+    def lista(v):
+        return [v] if isinstance(v, str) else list(v or [])
+    return {
+        "siempre": lista(c.get("siempre")),
+        "nueva": lista(c.get("nueva")),
+        "usada": lista(c.get("usada")),
+        "senales": [{"si": re.compile(quitar_tildes(x["si"]), re.I), "texto": x.get("texto"),
+                     "si_no": x.get("si_no"), "solo": x.get("solo")} for x in (c.get("senales") or [])],
+    }
+
+
 def _regex(lista) -> list[re.Pattern]:
     # quitamos tildes del patrón igual que del texto, sin tocar mayúsculas (\S, \W... importan)
     return [re.compile(quitar_tildes(str(x).strip()), re.I) for x in (lista or [])]
 
 
-def cargar(ruta: str | Path = "config.yaml") -> Config:
+def cargar(ruta: str | Path = "config.yaml", incluir_retirados: bool = False) -> Config:
     datos = yaml.safe_load(Path(ruta).read_text(encoding="utf-8")) or {}
     exc_comun = datos.get("excluir_comun") or []
     exc_desc = datos.get("excluir_descripcion_comun") or []
@@ -178,8 +212,11 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
                            dudas=_regex(comp.get("dudas") or [])),
     }
 
-    productos = []
+    productos, retirados = [], []
     for p in datos.get("productos") or []:
+        if p.get("activo", True) is False and not incluir_retirados:   # retirado: no se busca
+            retirados.append(p["nombre"])
+            continue
         usado = p.get("segunda_mano") or {}
         nuevo = p.get("nuevo") or {}
         tipo = str(p.get("tipo") or "consola").strip().lower()
@@ -203,6 +240,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
             dudas=r["dudas"],
             tipo=tipo,
             precio_nuevo=p.get("precio_nuevo"),
+            compat=_compat(p.get("compatibilidad") or {}),
         ))
     if not productos:
         raise ValueError("config.yaml no tiene ningún producto en 'productos'")
@@ -225,6 +263,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
     env = os.environ.get
     return Config(
         productos=productos,
+        productos_retirados=retirados,
         tiendas=tiendas,
         lat=float(ubic.get("lat", 43.3614)),
         lon=float(ubic.get("lon", -5.8494)),

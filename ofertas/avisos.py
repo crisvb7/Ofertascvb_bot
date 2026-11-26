@@ -400,6 +400,14 @@ class Avisador:
         if self.estado.leer(f"indice:{self.grupo_id}:{categoria}"):
             self._indice_en(self.grupo_id, categoria, html_aviso, crear=False)
 
+    def indice_retirado(self, categoria: str, html_aviso: str) -> None:
+        """En los grupos donde una pieza retirada tenía índice, lo cambia por un aviso."""
+        if not (self.telegram and self.estado):
+            return
+        for grupo in {g for g in (self.grupo_id, self.grupo_pc_id) if g}:
+            if self.estado.leer(f"indice:{grupo}:{categoria}"):
+                self._indice_en(grupo, categoria, html_aviso, crear=False)
+
     def _indice_en(self, grupo: str, categoria: str, html_indice: str, crear: bool = True) -> None:
         clave = f"indice:{grupo}:{categoria}"
         clave_hash = f"indice_hash:{grupo}:{categoria}"
@@ -468,7 +476,7 @@ CABECERAS = {
 def formatear(a, producto: str, motivo: str, mediana: float | None = None, muestras: int = 0,
               distancia: float | None = None, sospechoso: bool = False,
               categoria: str = "resto", duda: str = "", vendedor: str = "",
-              componente: bool = False) -> Aviso:
+              componente: bool = False, compat: list[str] | tuple = ()) -> Aviso:
     e = html.escape
     fuente = ETIQUETA_FUENTE.get(a.fuente, a.fuente)
     tipo = ("nuevo" if componente else "nueva") if a.nuevo else "segunda mano"
@@ -525,6 +533,12 @@ def formatear(a, producto: str, motivo: str, mediana: float | None = None, muest
         aviso = "⚠️ Muy por debajo del mercado: puede ser estafa. Paga solo dentro de la plataforma."
         h.append(e(aviso))
         t.append(aviso)
+    if compat:
+        h.append("🔧 <b>Compatibilidad</b>")
+        t.append("🔧 Compatibilidad")
+        for linea in compat:
+            h.append(e(linea))
+            t.append(linea)
     destino = a.tienda if a.fuente == "tienda" and a.tienda else fuente
     h.append(f'👉 <a href="{e(a.url, quote=True)}"><b>Ver en {e(destino)}</b></a>')
     t.append(f"👉 {a.url}")
