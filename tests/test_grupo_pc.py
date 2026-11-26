@@ -207,7 +207,7 @@ def test_mensaje_de_placa_usada_lleva_la_compatibilidad(motor_y_av, cfg):
     motor, av = motor_y_av
     placa = cfg.producto("Placa B650/B850")
     placa.precio_nuevo = None
-    pasada(motor, [wp("p", "ASUS Prime B650M-R", 70)], placa)
+    pasada(motor, [wp("p", "ASUS Prime B650M-A WiFi II", 90)], placa)
     texto = av.avisos[0].texto
     assert "🔧 Compatibilidad" in texto and "va con el 9800X3D" in texto
     assert "Pregunta qué BIOS tiene" in texto and "botón BIOS FlashBack" in texto
@@ -235,3 +235,15 @@ def test_las_piezas_retiradas_avisan_en_su_indice(motor_y_av):
     motor._actualizar_indices()
     assert set(av.retirados) == {"pc_ryzen-7-5700x3d", "pc_ryzen-7-5800x3d", "pc_ryzen-5-5600"}
     assert "no es compatible con el PC nuevo" in av.retirados["pc_ryzen-5-5600"]
+
+
+@pytest.mark.parametrize("titulo,esperado", [
+    ("ASUS Prime B650M-A WiFi II", "consola"),
+    ("Gigabyte B650 Eagle AX", "consola"),
+    ("MSI B850M Gaming Plus Wi-Fi", "consola"),
+    ("Placa base WiFi 6E AM5 B650M", "consola"),
+    ("ASUS Prime B650M-R", None),               # sin WiFi
+    ("Gigabyte B650M D3HP sin wifi", None),
+])
+def test_placa_solo_con_wifi(cfg, titulo, esperado):
+    assert cfg.producto("Placa B650/B850").clasificar(wp("1", titulo, 90))[0] == esperado

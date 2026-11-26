@@ -98,11 +98,12 @@ def test_los_componentes_se_cargan_como_tales(cfg):
     ("DDR5 32GB", "DDR5 64GB 2x32", F),
     ("DDR5 32GB", "DDR4 32GB 3200", F),
     ("DDR5 32GB", "Placa B650 + 32GB DDR5", F),                      # es la placa
-    ("Placa B650/B850", "Gigabyte B650 Eagle", C),
+    ("Placa B650/B850", "Gigabyte B650 Eagle AX", C),
+    ("Placa B650/B850", "Gigabyte B650 Eagle", F),                    # sin WiFi
     ("Placa B650/B850", "ASUS TUF GAMING B650-PLUS WIFI", C),
-    ("Placa B650/B850", "Placa base B650M Pro RS", C),
+    ("Placa B650/B850", "Placa base B650M Pro RS WiFi", C),
     ("Placa B650/B850", "ASUS Prime B850M-F WiFi", C),
-    ("Placa B650/B850", "B650 + Ryzen 7 7600", D),
+    ("Placa B650/B850", "B650 WiFi + Ryzen 7 7600", D),
     ("Placa B650/B850", "Placa B550 AM4", F),
     ("Placa B650/B850", "ASUS PRIME A620M-K", F),
     ("Placa B650/B850", "Memoria DDR5 para B650", F),

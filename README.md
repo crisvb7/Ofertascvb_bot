@@ -29,7 +29,7 @@ También descarta los anuncios reservados y los de fuera de tu radio sin envío.
 
 **Piezas de PC 🖥️.** Los productos con `tipo: componente` en `config.yaml` (ahora: Ryzen 7 5700X3D,
 Ryzen 7 5800X3D, Ryzen 5 5600, RX 9060 XT 16GB, RX 9070, RX 9070 XT y, para un PC nuevo AM5,
-Ryzen 7 9800X3D, DDR5 32GB, placas B650/B850, fuente de 850 W Gold, disipador de doble torre y SSD
+Ryzen 7 9800X3D, DDR5 32GB, placas B650/B850 con WiFi y Bluetooth, fuente de 850 W Gold, disipador de doble torre y SSD
 NVMe de 1 TB) tienen **cada una su propio tema** en el
 grupo («🖥️ Ryzen 7 5700X3D», «🖥️ RX 9070»…), con lo nuevo y lo de segunda mano juntos:
 - **Nuevas**: Chollometro (PcComponentes, Amazon, Coolmod…), Carrefour, El Corte Inglés y GAME.

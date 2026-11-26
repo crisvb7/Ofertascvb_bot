@@ -329,17 +329,20 @@ productos:
   # Placas AM5 B650 / B850 (A620 y X670/X870 fuera: unas flojas, otras caras).
   - nombre: Placa B650/B850
     tipo: componente
-    busquedas: ["placa b650", "b650m"]
-    incluir: ['\bb[68]50(e|m)?\b']
-    excluir: ['\b(am4|b550|b450|x570)\b']
+    # solo con WiFi y Bluetooth integrados (Gigabyte las llama «AX»)
+    busquedas: ["b650 wifi", "b650m wifi", "b850 wifi"]
+    incluir: ['\bb[68]50(e|m)?\b(?=.*(wi-?\s?fi|\bax\b|wireless))', '(wi-?\s?fi|\bax\b|wireless).*?\bb[68]50(e|m)?\b']
+    excluir: ['\b(am4|b550|b450|x570)\b', '\b(sin|no|without)\s(wi-?\s?fi|wireless)\b']
     accesorios: ['\b(disipador(es)?|ventilador(es)?|refrigeracion|cables?|fundas?|pegatinas?|antenas?|backplates?|memorias?|ram|ddr5|procesador|cpu|ryzen|grafica|tarjeta grafica|ssd|disco|pc|ordenador|torre)\b']
     pistas: ['\b(placa|placa base|motherboard|asus|msi|gigabyte|aorus|asrock|biostar|tuf|prime|tomahawk|eagle|steel legend|pro rs|gaming)\b']
-    tope: 180
-    precio_nuevo: 84  # lo que cuesta nueva ahora (noviembre 2026)
-    segunda_mano: {min: 50, max: 100}
-    nuevo: {min: 70, max: 110}
+    tope: 200
+    precio_nuevo: 129  # ASUS Prime B650M-A WiFi II nueva (noviembre 2026)
+    segunda_mano: {min: 55, max: 105}
+    nuevo: {min: 85, max: 135}
     compatibilidad:
-      siempre: "✅ AM5 + DDR5: va con el 9800X3D, la RAM DDR5 y cualquier gráfica"
+      siempre:
+        - "✅ AM5 + DDR5: va con el 9800X3D, la RAM DDR5 y cualquier gráfica"
+        - "📶 WiFi integrado: el mismo módulo trae Bluetooth"
       nueva: "✅ Nueva: ya suele venir con BIOS para Ryzen 9000"
       senales:
         - si: 'flash\s?back|q-?flash|flash bios|bios (actualizada|al dia|nueva)|ryzen 9000|9800x3d|9000 ready'
