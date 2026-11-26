@@ -171,10 +171,22 @@ class Estado:
             (categoria, time.time() - dias * 86400)).fetchall()
         return [dict(f) for f in filas]
 
-    def olvidar_avisos(self) -> None:
-        """Hace que los anuncios vuelvan a enviarse (p. ej. al estrenar el grupo)."""
-        self.db.execute("UPDATE anuncios SET avisado_precio=NULL")
+    def olvidar_avisos(self, productos: list[str] | None = None) -> None:
+        """Hace que los anuncios vuelvan a enviarse (p. ej. al estrenar el grupo); solo los de
+        `productos` si se dan."""
+        if productos is None:
+            self.db.execute("UPDATE anuncios SET avisado_precio=NULL")
+        elif productos:
+            marcas = ",".join("?" * len(productos))
+            self.db.execute(f"UPDATE anuncios SET avisado_precio=NULL WHERE producto IN ({marcas})", productos)
         self.db.commit()
+
+    def minimo_nuevo(self, producto: str, dias: float = 3) -> float | None:
+        """El precio más bajo al que se ha visto el producto nuevo en los últimos `dias`."""
+        fila = self.db.execute(
+            "SELECT MIN(precio) FROM anuncios WHERE producto=? AND nuevo=1 AND precio IS NOT NULL "
+            "AND visto_ultima>=?", (producto, time.time() - dias * 86400)).fetchone()
+        return fila[0] if fila and fila[0] is not None else None
 
     # --- antifraude -----------------------------------------------------
     def vendedor(self, id_: str, max_horas: float = 12) -> dict | None:

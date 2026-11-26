@@ -29,7 +29,8 @@ También descarta los anuncios reservados y los de fuera de tu radio sin envío.
 
 **Piezas de PC 🖥️.** Los productos con `tipo: componente` en `config.yaml` (ahora: Ryzen 7 5700X3D,
 Ryzen 7 5800X3D, Ryzen 5 5600, RX 9060 XT 16GB, RX 9070, RX 9070 XT y, para un PC nuevo AM5,
-Ryzen 7 9800X3D, DDR5 32GB y placas B650/B850) tienen **cada una su propio tema** en el
+Ryzen 7 9800X3D, DDR5 32GB, placas B650/B850, fuente de 850 W Gold, disipador de doble torre y SSD
+NVMe de 1 TB) tienen **cada una su propio tema** en el
 grupo («🖥️ Ryzen 7 5700X3D», «🖥️ RX 9070»…), con lo nuevo y lo de segunda mano juntos:
 - **Nuevas**: Chollometro (PcComponentes, Amazon, Coolmod…), Carrefour, El Corte Inglés y GAME.
 - **Segunda mano**: Wallapop, Vinted, CeX y Cash Converters.
@@ -37,6 +38,23 @@ grupo («🖥️ Ryzen 7 5700X3D», «🖥️ RX 9070»…), con lo nuevo y lo d
 Cada mensaje dice si es nueva o de segunda mano y lleva su 🔥 OFERTÓN / 💰 BUEN PRECIO como con las
 consolas. El índice fijado de cada tema marca cada oferta con 🆕 o ♻️. Si añades una pieza, el bot le
 crea su tema solo.
+
+**Grupo aparte «PC Components».** Con `telegram.grupo_pc` en `config.yaml`, las piezas van a otro
+grupo, con un tema por pieza. Para montarlo:
+1. Crea un grupo nuevo llamado **PC Components** y añade a tu bot.
+2. En la información del grupo: **Editar → Temas** (actívalos).
+3. **Administradores → Añadir administrador → tu bot**, con *Administrar temas*, *Fijar mensajes*,
+   *Cambiar información del grupo* y *Eliminar mensajes*.
+4. Escribe cualquier cosa en el grupo.
+
+El bot lo encuentra solo en unos minutos (lo busca por el nombre), te lo dice por el chat privado y
+pasa allí las piezas que siguen publicadas: las borra del grupo principal y deja en sus temas viejos
+un aviso de que se han mudado. Mientras no existe, las piezas sin tema en el grupo principal te
+llegan al chat privado.
+
+**Segunda mano que no compensa, fuera.** Una pieza usada solo se manda si sale al menos un
+`avisos.rebaja_minima_usado` (15 %) más barata que nueva: su `precio_nuevo` de `config.yaml`, o lo más
+barato que el bot la haya visto nueva en Chollometro o en las tiendas estos días.
 Se reconocen por el título con las reglas del bloque `componentes`: fuera portátiles, PCs montados y
 lo que empieza por un accesorio ("Disipador para…", "Placa B550…"); marcados ❓ los packs con placa
 o RAM, los cambios, los averiados o los usados para minar. Para vigilar otra pieza, copia uno de

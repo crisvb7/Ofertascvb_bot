@@ -237,20 +237,39 @@ class Consola:
 
 
 class Avisador:
-    """Mensajes del sistema por todos los canales; ofertas al grupo (por temas) o al chat."""
+    """Mensajes del sistema por todos los canales; ofertas al grupo (por temas) o al chat.
+
+    Con `grupo_pc_id`, las piezas de PC (temas "pc_...") van a ese otro grupo."""
 
     def __init__(self, canales: list, telegram: Telegram | None = None, grupo_id: str | None = None,
-                 estado=None, temas: dict | None = None):
+                 estado=None, temas: dict | None = None, grupo_pc_id: str | None = None,
+                 temas_pc: dict | None = None, espera_grupo_pc: bool = False):
         self.canales = canales                    # para mensajes del sistema
         self.telegram = telegram
         self.grupo_id = str(grupo_id) if grupo_id else None
+        self.grupo_pc_id = str(grupo_pc_id) if grupo_pc_id else None
         self.estado = estado
         self.temas_cfg = {k: int(v) for k, v in (temas or {}).items() if v}
+        self.temas_pc_cfg = {k: int(v) for k, v in (temas_pc or {}).items() if v}
         self.otros = [c for c in canales if not isinstance(c, _CanalTelegram)]
+        self.espera_grupo_pc = espera_grupo_pc    # hay nombre de grupo de piezas, pero aún no existe
+
+    def _sin_tema_nuevo(self, categoria: str) -> bool:
+        """Mientras el grupo de piezas no existe, no se crean temas de piezas en el principal."""
+        return self.espera_grupo_pc and not self.grupo_pc_id and categoria.startswith("pc_")
 
     @property
     def con_grupo(self) -> bool:
-        return bool(self.telegram and self.grupo_id)
+        return bool(self.telegram and (self.grupo_id or self.grupo_pc_id))
+
+    def grupo_de(self, categoria: str) -> str | None:
+        """A qué grupo va un tema: las piezas de PC, al suyo si lo hay."""
+        if self.grupo_pc_id and categoria.startswith("pc_"):
+            return self.grupo_pc_id
+        return self.grupo_id
+
+    def _temas_fijos(self, grupo: str) -> dict:
+        return self.temas_pc_cfg if grupo == self.grupo_pc_id and grupo != self.grupo_id else self.temas_cfg
 
     def enviar(self, aviso: Aviso) -> bool:
         ok = False
@@ -265,10 +284,14 @@ class Avisador:
         """Devuelve la referencia del mensaje de Telegram ({} si solo salió por otro canal)
         o None si no se pudo enviar por ningún sitio."""
         ref, ok = None, False
-        if self.telegram and (self.con_grupo or self.telegram.chat_id):
+        grupo = self.grupo_de(categoria) if self.telegram else None
+        if self.telegram and (grupo or self.telegram.chat_id):
             try:
-                if self.con_grupo:
-                    ref = self.telegram.enviar(aviso, chat_id=self.grupo_id, thread_id=self.tema(categoria))
+                tid = self.tema(categoria) if grupo else None
+                if grupo and tid is None and self._sin_tema_nuevo(categoria):
+                    ref = self.telegram.enviar(aviso) if self.telegram.chat_id else None   # a tu chat
+                elif grupo:
+                    ref = self.telegram.enviar(aviso, chat_id=grupo, thread_id=tid)
                 else:
                     ref = self.telegram.enviar(aviso)
                 ok = ref is not None
@@ -302,38 +325,43 @@ class Avisador:
             return False
 
     def tema(self, categoria: str) -> int | None:
-        if not self.con_grupo:
+        grupo = self.grupo_de(categoria) if self.telegram else None
+        if not grupo:
             return None
-        if categoria in self.temas_cfg:
-            return self.temas_cfg[categoria]
-        clave = f"tema:{self.grupo_id}:{categoria}"
+        fijos = self._temas_fijos(grupo)
+        if categoria in fijos:
+            return fijos[categoria]
+        clave = f"tema:{grupo}:{categoria}"
         guardado = self.estado.leer(clave) if self.estado else None
         if guardado:
             return int(guardado)
+        if self._sin_tema_nuevo(categoria):
+            return None
         nombre, color = CATEGORIAS.get(categoria, CATEGORIAS["usada_resto"])
-        tid = self.telegram.crear_tema(self.grupo_id, nombre, color)
+        tid = self.telegram.crear_tema(grupo, nombre, color)
         if tid and self.estado:
             self.estado.guardar(clave, tid)
-            self.estado.guardar(f"tema_nombre:{self.grupo_id}:{categoria}", nombre)
-            log.info("Tema creado en el grupo: %s (id %s)", nombre, tid)
+            self.estado.guardar(f"tema_nombre:{grupo}:{categoria}", nombre)
+            log.info("Tema creado en el grupo %s: %s (id %s)", grupo, nombre, tid)
         return tid
 
-    def nombrar_grupo(self, nombre: str | None) -> None:
+    def nombrar_grupo(self, nombre: str | None, grupo: str | None = None) -> None:
         """Pone al grupo el nombre de config.yaml (una vez; se repite si lo cambias)."""
-        if not (nombre and self.con_grupo and self.estado):
+        grupo = grupo or self.grupo_id
+        if not (nombre and grupo and self.telegram and self.estado):
             return
-        clave = f"grupo_nombre:{self.grupo_id}"
-        intento = f"grupo_nombre_intento:{self.grupo_id}"
+        clave = f"grupo_nombre:{grupo}"
+        intento = f"grupo_nombre_intento:{grupo}"
         if self.estado.leer(clave) == nombre or time.time() - float(self.estado.leer(intento, "0")) < 3600:
             return                                  # ya lo tiene, o se intentó hace menos de 1 h
         self.estado.guardar(intento, time.time())
-        ok, desc = self.telegram.renombrar_grupo(self.grupo_id, nombre)
+        ok, desc = self.telegram.renombrar_grupo(grupo, nombre)
         if ok:
             self.estado.guardar(clave, nombre)
             log.info("Nombre del grupo: %s", nombre)
             return
         log.warning("No he podido poner el nombre «%s» al grupo: %s", nombre, desc)
-        aviso = f"no_nombre:{self.grupo_id}:{nombre}"
+        aviso = f"no_nombre:{grupo}:{nombre}"
         if not self.estado.leer(aviso):           # avisa una sola vez
             self.estado.guardar(aviso, "1")
             txt = (f"⚠️ No he podido cambiar el nombre del grupo a «{nombre}» ({desc}). "
@@ -345,35 +373,55 @@ class Avisador:
         if not (self.con_grupo and self.estado):
             return
         for sec, (nombre, _) in CATEGORIAS.items():
+            grupo = self.grupo_de(sec)
+            if not grupo:
+                continue
             tid = self.tema(sec)
-            clave = f"tema_nombre:{self.grupo_id}:{sec}"
+            clave = f"tema_nombre:{grupo}:{sec}"
             if tid and self.estado.leer(clave) != nombre:
-                if self.telegram.renombrar_tema(self.grupo_id, tid, nombre):
+                if self.telegram.renombrar_tema(grupo, tid, nombre):
                     self.estado.guardar(clave, nombre)
 
     def indice(self, categoria: str, html_indice: str) -> None:
         """Mensaje fijado en cada tema con las ofertas de los últimos días (lo más nuevo arriba)."""
-        if not (self.con_grupo and self.estado):
+        grupo = self.grupo_de(categoria) if self.telegram else None
+        if not (grupo and self.estado):
             return
-        clave = f"indice:{self.grupo_id}:{categoria}"
-        clave_hash = f"indice_hash:{self.grupo_id}:{categoria}"
+        if self._sin_tema_nuevo(categoria) and self.tema(categoria) is None:
+            return
+        self._indice_en(grupo, categoria, html_indice)
+
+    def indice_movido(self, categoria: str, html_aviso: str) -> None:
+        """En el grupo principal, cambia el índice de un tema de pieza de PC por un aviso de que
+        ahora está en el grupo de piezas (solo si ese índice existe)."""
+        if not (self.telegram and self.estado and self.grupo_id and self.grupo_pc_id
+                and self.grupo_pc_id != self.grupo_id and categoria.startswith("pc_")):
+            return
+        if self.estado.leer(f"indice:{self.grupo_id}:{categoria}"):
+            self._indice_en(self.grupo_id, categoria, html_aviso, crear=False)
+
+    def _indice_en(self, grupo: str, categoria: str, html_indice: str, crear: bool = True) -> None:
+        clave = f"indice:{grupo}:{categoria}"
+        clave_hash = f"indice_hash:{grupo}:{categoria}"
         huella = hashlib.sha1(html_indice.encode()).hexdigest()
         if self.estado.leer(clave_hash) == huella:
             return
         mid = self.estado.leer(clave)
         if mid:
-            r = self.telegram.editar(self.grupo_id, int(mid), html_indice, False, sin_vista_previa=True)
+            r = self.telegram.editar(grupo, int(mid), html_indice, False, sin_vista_previa=True)
             if r is None:
                 return                         # error pasajero: se reintenta en la próxima pasada
             if r:
                 self.estado.guardar(clave_hash, huella)
                 return
-        ref = self.telegram.enviar(Aviso(html_indice, ""), chat_id=self.grupo_id,
+        if not crear:
+            return
+        ref = self.telegram.enviar(Aviso(html_indice, ""), chat_id=grupo,
                                    thread_id=self.tema(categoria), silencioso=True, sin_vista_previa=True)
         if ref:
             self.estado.guardar(clave, ref["message_id"])
             self.estado.guardar(clave_hash, huella)
-            self.telegram.fijar(self.grupo_id, ref["message_id"])
+            self.telegram.fijar(grupo, ref["message_id"])
 
 
 class _CanalTelegram:
@@ -401,8 +449,12 @@ def crear_avisador(cfg, solo_consola: bool = False, estado=None) -> Avisador:
             log.warning("No hay Telegram ni WhatsApp configurados: los avisos salen solo por consola")
     if solo_consola or (not canales and not telegram):
         canales.append(Consola())
+    grupo_pc = (cfg.telegram_grupo_pc_id or (estado.leer("grupo_pc_id") if estado else None)
+                if cfg.telegram_nombre_grupo_pc or cfg.telegram_grupo_pc_id else None)
     return Avisador(canales, telegram=telegram, grupo_id=None if solo_consola else cfg.telegram_grupo_id,
-                    estado=estado, temas=cfg.telegram_temas)
+                    estado=estado, temas=cfg.telegram_temas,
+                    grupo_pc_id=None if solo_consola else grupo_pc, temas_pc=cfg.telegram_temas_pc,
+                    espera_grupo_pc=bool(cfg.telegram_nombre_grupo_pc and not grupo_pc))
 
 
 # --- formato de los mensajes -------------------------------------------------

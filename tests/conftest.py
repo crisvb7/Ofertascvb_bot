@@ -22,6 +22,8 @@ class AvisadorFalso:
         self.indices = {}         # categoría -> html del índice
         self.con_grupo = con_grupo
         self.grupo_id = "-100123" if con_grupo else None
+        self.grupo_pc_id = None
+        self.movidos = {}         # categoría -> aviso de "se ha pasado al grupo de piezas"
         self._n = 0
 
     def enviar(self, aviso):
@@ -48,8 +50,11 @@ class AvisadorFalso:
     def preparar_temas(self):
         self.temas_preparados = True
 
-    def nombrar_grupo(self, nombre):
+    def nombrar_grupo(self, nombre, grupo=None):
         self.nombre_grupo = nombre
+
+    def indice_movido(self, categoria, html):
+        self.movidos[categoria] = html
 
 
 @pytest.fixture

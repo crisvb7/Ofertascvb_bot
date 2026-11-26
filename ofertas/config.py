@@ -29,6 +29,7 @@ class Producto:
     dudas: list[re.Pattern] = field(default_factory=list)
     otros_productos: list[re.Pattern] = field(default_factory=list)   # "incluir" del resto de productos
     tipo: str = "consola"               # consola | componente (pieza de PC)
+    precio_nuevo: float | None = None   # lo que cuesta nueva ahora (para juzgar la de segunda mano)
 
     @property
     def es_componente(self) -> bool:
@@ -115,6 +116,11 @@ class Config:
     telegram_grupo_id: str | None = None
     telegram_temas: dict = field(default_factory=dict)
     telegram_nombre_grupo: str | None = None
+    # grupo aparte para las piezas de PC (si no hay id, el bot lo busca por el nombre)
+    telegram_grupo_pc_id: str | None = None
+    telegram_nombre_grupo_pc: str | None = None
+    telegram_temas_pc: dict = field(default_factory=dict)
+    rebaja_minima_usado: float = 0.15   # pieza usada: al menos este % más barata que nueva
     intervalos: dict = field(default_factory=dict)
     fuentes: dict = field(default_factory=dict)
     feeds_chollometro: list[str] = field(default_factory=list)
@@ -196,6 +202,7 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
             pistas_consola=_regex(p["pistas"]) if "pistas" in p else r["pistas"],
             dudas=r["dudas"],
             tipo=tipo,
+            precio_nuevo=p.get("precio_nuevo"),
         ))
     if not productos:
         raise ValueError("config.yaml no tiene ningún producto en 'productos'")
@@ -234,6 +241,10 @@ def cargar(ruta: str | Path = "config.yaml") -> Config:
         telegram_grupo_id=str(env("TELEGRAM_GRUPO_ID") or tg.get("grupo_id") or "") or None,
         telegram_temas={k: v for k, v in (tg.get("temas") or {}).items() if v},
         telegram_nombre_grupo=str(tg.get("nombre") or "").strip() or None,
+        telegram_grupo_pc_id=str(env("TELEGRAM_GRUPO_PC_ID") or (tg.get("grupo_pc") or {}).get("id") or "") or None,
+        telegram_nombre_grupo_pc=str((tg.get("grupo_pc") or {}).get("nombre") or "").strip() or None,
+        telegram_temas_pc={k: v for k, v in ((tg.get("grupo_pc") or {}).get("temas") or {}).items() if v},
+        rebaja_minima_usado=float(av.get("rebaja_minima_usado", 0.15)),
         intervalos={"wallapop": 5, "vinted": 10, "cex": 30, "cashconverters": 30, "carrefour": 15,
                     "game": 15, "elcorteingles": 15, "chollometro": 10, "tiendas": 30,
                     **(datos.get("intervalos_min") or {})},

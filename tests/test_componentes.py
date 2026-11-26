@@ -20,6 +20,7 @@ def grupo(cfg, estado):
     for p in cfg.productos:
         if p.nombre in limites:
             p.usado_min, p.usado_max, p.nuevo_min, p.nuevo_max, p.tope = limites[p.nombre]
+            p.precio_nuevo = None    # la regla de "usada casi al precio de nueva" va en test_grupo_pc
     return Motor(cfg, estado, av, pausa=(0, 0)), av
 
 
@@ -31,7 +32,8 @@ def chollo(id_, titulo, precio, tienda="PcComponentes"):
 def test_los_componentes_se_cargan_como_tales(cfg):
     piezas = [p.nombre for p in cfg.productos if p.es_componente]
     assert piezas == ["Ryzen 7 5700X3D", "Ryzen 7 5800X3D", "Ryzen 5 5600", "RX 9060 XT 16GB", "RX 9070",
-                      "Ryzen 7 9800X3D", "DDR5 32GB", "Placa B650/B850", "RX 9070 XT"]
+                      "Ryzen 7 9800X3D", "DDR5 32GB", "Placa B650/B850", "RX 9070 XT",
+                      "Fuente 850W Gold", "Disipador doble torre", "SSD NVMe 1TB"]
     assert not cfg.producto("PS5").es_componente
 
 
@@ -151,7 +153,8 @@ def test_un_tema_por_pieza_con_su_indice(grupo, cfg):
                       "pc_ryzen-5-5600": "🖥️ Ryzen 5 5600", "pc_rx-9060-xt-16gb": "🖥️ RX 9060 XT 16GB",
                       "pc_rx-9070": "🖥️ RX 9070", "pc_rx-9070-xt": "🖥️ RX 9070 XT",
                       "pc_ryzen-7-9800x3d": "🖥️ Ryzen 7 9800X3D", "pc_ddr5-32gb": "🖥️ DDR5 32GB",
-                      "pc_placa-b650-b850": "🖥️ Placa B650/B850"}
+                      "pc_placa-b650-b850": "🖥️ Placa B650/B850", "pc_fuente-850w-gold": "🖥️ Fuente 850W Gold",
+                      "pc_disipador-doble-torre": "🖥️ Disipador doble torre", "pc_ssd-nvme-1tb": "🖥️ SSD NVMe 1TB"}
     assert set(av.indices) == set(avisos.CATEGORIAS)                 # un índice por tema
     cpu = av.indices["pc_ryzen-7-5700x3d"]
     assert cpu.startswith("📌 <b>🖥️ Ryzen 7 5700X3D</b>") and "220 €</b> · ♻️ usada" in cpu

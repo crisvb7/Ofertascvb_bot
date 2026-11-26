@@ -1,6 +1,7 @@
 """Bucle principal: consulta cada fuente a su ritmo, decide qué es buena oferta y avisa."""
 from __future__ import annotations
 
+import html
 import json
 import logging
 import random
@@ -15,7 +16,7 @@ from .fuentes import cashconverters, carrefour, cex, chollometro, elcorteingles,
 from .fuentes.vinted import Vinted
 from .modelos import Anuncio
 from .red import ERRORES_RED, Bloqueado, sesion_navegador
-from .utiles import distancia_km, euros
+from .utiles import distancia_km, euros, normalizar
 
 log = logging.getLogger(__name__)
 FUENTES = ("wallapop", "vinted", "cex", "cashconverters", "carrefour", "game", "elcorteingles",
@@ -141,7 +142,11 @@ class Motor:
                 continue
             self.avisos_enviados += 1
             self.estado.marcar_avisado(a.clave, a.precio)
-            if anterior and anterior.get("message_id"):   # el aviso viejo: "ha bajado, mira el nuevo"
+            movido = (anterior and anterior.get("chat_id") and ref.get("chat_id")
+                      and str(anterior["chat_id"]) != str(ref["chat_id"]))
+            if anterior and anterior.get("message_id") and movido:
+                self.avisador.borrar(anterior)            # se ha pasado al grupo de piezas
+            elif anterior and anterior.get("message_id"):   # el aviso viejo: "ha bajado, mira el nuevo"
                 self.avisador.editar(anterior, avisos.con_estado(
                     anterior["html"], avisos.prefijo_estado("rebajada", a.precio), bool(anterior["con_foto"])))
             self.estado.guardar_mensaje(a, a.id, producto, sec, ref, aviso.html)
@@ -185,6 +190,11 @@ class Motor:
         for sec in avisos.CATEGORIAS:
             filas = self.estado.mensajes_categoria(sec, self.cfg.dias_seguimiento)
             self.avisador.indice(sec, avisos.construir_indice(sec, filas, self.cfg.dias_seguimiento))
+            if sec.startswith("pc_") and getattr(self.avisador, "grupo_pc_id", None):
+                nombre = avisos.CATEGORIAS[sec][0]
+                destino = html.escape(self.cfg.telegram_nombre_grupo_pc or "de piezas de PC")
+                self.avisador.indice_movido(sec, f"📌 <b>{html.escape(nombre)}</b>\n"
+                                                 f"➡️ Esta sección se ha pasado al grupo «{destino}».")
 
     def _reclasificar_enviados(self, version: str = "v2") -> None:
         """Pasa el filtro actual por lo ya enviado: marca 🚫 lo que no era una consola
@@ -289,17 +299,71 @@ class Motor:
 
     def _estrenar_grupo(self) -> None:
         """La primera vez que se usa un grupo, vuelve a mandar lo que sigue publicado."""
+        self._buscar_grupo_pc()
         if not self.avisador.con_grupo:
             return
+        av = self.avisador
+        if av.grupo_id:
+            try:
+                av.nombrar_grupo(self.cfg.telegram_nombre_grupo)
+            except Exception:
+                log.exception("Error poniendo el nombre del grupo")
+            clave = f"grupo_estrenado:{av.grupo_id}"
+            if not self.estado.leer(clave):
+                self.estado.olvidar_avisos()
+                self.estado.guardar(clave, "1")
+                log.info("Grupo nuevo: reenvío las ofertas que siguen publicadas")
+        grupo_pc = getattr(av, "grupo_pc_id", None)
+        if grupo_pc and grupo_pc != av.grupo_id:
+            try:
+                av.nombrar_grupo(self.cfg.telegram_nombre_grupo_pc, grupo_pc)
+            except Exception:
+                log.exception("Error poniendo el nombre del grupo de piezas")
+            clave = f"grupo_estrenado:{grupo_pc}"
+            if not self.estado.leer(clave):
+                # las piezas que siguen publicadas se mandan al grupo nuevo (y se quitan del otro)
+                self.estado.olvidar_avisos([p.nombre for p in self.cfg.productos if p.es_componente])
+                self.estado.guardar(clave, "1")
+                log.info("Grupo de piezas nuevo: le mando las piezas que siguen publicadas")
+
+    def _buscar_grupo_pc(self) -> None:
+        """Sin id del grupo de piezas en config.yaml, lo busca por su nombre entre los grupos en
+        los que está el bot (cada 10 minutos, hasta encontrarlo)."""
+        av = self.avisador
+        nombre = self.cfg.telegram_nombre_grupo_pc
+        telegram = getattr(av, "telegram", None)
+        if getattr(av, "grupo_pc_id", None) or not nombre or not telegram:
+            return
+        if time.time() - float(self.estado.leer("grupo_pc_busqueda", "0")) < 600:
+            return
+        self.estado.guardar("grupo_pc_busqueda", time.time())
         try:
-            self.avisador.nombrar_grupo(self.cfg.telegram_nombre_grupo)
-        except Exception:
-            log.exception("Error poniendo el nombre del grupo")
-        clave = f"grupo_estrenado:{self.avisador.grupo_id}"
-        if not self.estado.leer(clave):
-            self.estado.olvidar_avisos()
-            self.estado.guardar(clave, "1")
-            log.info("Grupo nuevo: reenvío las ofertas que siguen publicadas")
+            chats = telegram.chats()
+        except Exception as e:
+            log.warning("No he podido buscar el grupo «%s»: %s", nombre, str(e)[:120])
+            return
+        buscado = normalizar(nombre)
+        for c in chats:
+            n = normalizar(c.get("nombre") or "")
+            if c.get("tipo") not in ("group", "supergroup") or str(c["id"]) == str(av.grupo_id):
+                continue
+            if n != buscado and "component" not in n:
+                continue
+            if not c.get("foro"):
+                if not self.estado.leer(f"grupo_pc_sin_temas:{c['id']}"):
+                    self.estado.guardar(f"grupo_pc_sin_temas:{c['id']}", "1")
+                    txt = (f"👋 He visto el grupo «{c.get('nombre')}», pero no tiene los temas activados. "
+                           "Actívalos en la información del grupo (Editar → Temas), escribe algo en él "
+                           "y en unos minutos empiezo a mandar allí las piezas de PC.")
+                    self._mandar(avisos.Aviso(html=html.escape(txt), texto=txt))
+                continue
+            av.grupo_pc_id = str(c["id"])
+            self.estado.guardar("grupo_pc_id", av.grupo_pc_id)
+            log.info("Grupo de piezas encontrado: %s (id %s)", c.get("nombre"), av.grupo_pc_id)
+            txt = (f"✅ Grupo «{c.get('nombre')}» encontrado: a partir de ahora las piezas de PC van "
+                   "allí, cada una en su tema.")
+            self._mandar(avisos.Aviso(html=html.escape(txt), texto=txt))
+            return
 
     def _vigilar_salud(self, fuente: str, fallo: str | None) -> None:
         """Si una fuente lleva muchos fallos seguidos te lo dice (una vez), y cuando vuelve."""
@@ -427,6 +491,10 @@ class Motor:
         _, pmax = prod.limites(a.nuevo)
         if prod.tope is not None and a.precio > prod.tope:
             return Veredicto(False)        # más caro que nueva: no interesa
+        if not a.nuevo and prod.es_componente:
+            nueva = self.precio_nuevo(prod)
+            if nueva and a.precio > nueva * (1 - self.cfg.rebaja_minima_usado):
+                return Veredicto(False)    # de segunda mano casi al precio de nueva: no compensa
         mediana, n = (None, 0) if a.nuevo else self.estado.mediana(prod.nombre, self.cfg.dias_mercado)
         fiable = mediana is not None and n >= self.cfg.muestras_minimas
 
@@ -460,6 +528,12 @@ class Motor:
         return Veredicto(True, motivo, mediana if fiable else None, n,
                          sospechoso=bool(fiable and a.precio < mediana * 0.5), oferton=oferton,
                          categoria=categoria)
+
+    def precio_nuevo(self, prod: Producto) -> float | None:
+        """Lo más barato que cuesta nueva: el de config.yaml o el más bajo visto estos días."""
+        precios = [p for p in (prod.precio_nuevo,
+                               self.estado.minimo_nuevo(prod.nombre, self.cfg.dias_seguimiento)) if p]
+        return min(precios) if precios else None
 
     def procesar_tienda(self, t, prod: Producto, info: dict) -> None:
         precio, en_stock = info.get("precio"), info.get("en_stock")
