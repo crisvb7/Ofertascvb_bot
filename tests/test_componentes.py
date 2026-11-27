@@ -98,16 +98,17 @@ def test_los_componentes_se_cargan_como_tales(cfg):
     ("DDR5 32GB", "DDR5 64GB 2x32", F),
     ("DDR5 32GB", "DDR4 32GB 3200", F),
     ("DDR5 32GB", "Placa B650 + 32GB DDR5", F),                      # es la placa
-    ("Placa B650/B850", "Gigabyte B650 Eagle AX", C),
-    ("Placa B650/B850", "Gigabyte B650 Eagle", F),                    # sin WiFi
+    ("Placa B650/B850", "ASUS Prime B650-PLUS WiFi", C),
     ("Placa B650/B850", "ASUS TUF GAMING B650-PLUS WIFI", C),
-    ("Placa B650/B850", "Placa base B650M Pro RS WiFi", C),
-    ("Placa B650/B850", "ASUS Prime B850M-F WiFi", C),
-    ("Placa B650/B850", "B650 WiFi + Ryzen 7 7600", D),
+    ("Placa B650/B850", "Placa base MSI B650 Gaming Plus WiFi", C),
+    ("Placa B650/B850", "TUF Gaming B650E-PLUS WiFi", C),
+    ("Placa B650/B850", "Prime B650-PLUS WiFi + Ryzen 7 7600", D),
+    ("Placa B650/B850", "ASUS TUF B650M-PLUS WiFi", F),                # micro ATX
+    ("Placa B650/B850", "ASUS Prime B650-PLUS", F),                    # sin WiFi
+    ("Placa B650/B850", "Gigabyte B650 Eagle AX", F),                  # no es de las comprobadas
     ("Placa B650/B850", "Placa B550 AM4", F),
-    ("Placa B650/B850", "ASUS PRIME A620M-K", F),
-    ("Placa B650/B850", "Memoria DDR5 para B650", F),
-    ("Placa B650/B850", "Ryzen 7 9800X3D + B650", F),                # es el procesador
+    ("Placa B650/B850", "Memoria DDR5 para Prime B650-PLUS WiFi", D),  # dice la marca: a revisar
+    ("Placa B650/B850", "Ryzen 7 9800X3D + Prime B650-PLUS WiFi", F),    # es el procesador
     ("PS5", "Cambio RX 9070 por PS5", F),                            # se vende la gráfica
 ])
 def test_clasifica_componentes(cfg_todo, producto, titulo, esperado):

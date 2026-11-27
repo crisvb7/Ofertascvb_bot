@@ -329,33 +329,34 @@ productos:
   # Placas AM5 B650 / B850 (A620 y X670/X870 fuera: unas flojas, otras caras).
   - nombre: Placa B650/B850
     tipo: componente
-    # solo con WiFi y Bluetooth integrados (Gigabyte las llama «AX»)
-    busquedas: ["b650 wifi", "b650m wifi", "b850 wifi"]
-    incluir: ['\bb[68]50(e|m)?\b(?=.*(wi-?\s?fi|\bax\b|wireless))', '(wi-?\s?fi|\bax\b|wireless).*?\bb[68]50(e|m)?\b']
-    excluir: ['\b(am4|b550|b450|x570)\b', '\b(sin|no|without)\s(wi-?\s?fi|wireless)\b']
+    # ATX con WiFi + Bluetooth y DOS ranuras PCIe x16: la RX 9070 XT para Windows y la RX 590
+    # para macOS (Hackintosh). Solo modelos comprobados: Prime B650-PLUS WiFi, TUF B650(E)-PLUS WiFi
+    # y MSI B650 Gaming Plus WiFi. Las micro ATX (B650M...) no caben dos gráficas.
+    busquedas: ["prime b650-plus wifi", "tuf b650-plus wifi", "b650 gaming plus wifi"]
+    incluir: ['\b(prime|tuf)\b.*?\bb650e?-?\s?plus\b(?=.*(wi-?\s?fi|wireless))', '\bb650\s?gaming\s?plus\b(?=.*(wi-?\s?fi|wireless))']
+    excluir: ['\b(am4|b550|b450|x570)\b', '\b(sin|no|without)\s(wi-?\s?fi|wireless)\b', '\bb650m\b']
     accesorios: ['\b(disipador(es)?|ventilador(es)?|refrigeracion|cables?|fundas?|pegatinas?|antenas?|backplates?|memorias?|ram|ddr5|procesador|cpu|ryzen|grafica|tarjeta grafica|ssd|disco|pc|ordenador|torre)\b']
-    pistas: ['\b(placa|placa base|motherboard|asus|msi|gigabyte|aorus|asrock|biostar|tuf|prime|tomahawk|eagle|steel legend|pro rs|gaming)\b']
-    tope: 200
-    precio_nuevo: 129  # ASUS Prime B650M-A WiFi II nueva (noviembre 2026)
-    segunda_mano: {min: 55, max: 105}
-    nuevo: {min: 85, max: 135}
+    pistas: ['\b(placa|placa base|motherboard|asus|msi|tuf|prime|gaming)\b']
+    tope: 220
+    precio_nuevo: 147  # ASUS Prime B650-PLUS WiFi nueva (noviembre 2026)
+    segunda_mano: {min: 60, max: 120}
+    nuevo: {min: 100, max: 150}
     compatibilidad:
       siempre:
-        - "✅ AM5 + DDR5: va con el 9800X3D, la RAM DDR5 y cualquier gráfica"
-        - "📶 WiFi integrado: el mismo módulo trae Bluetooth"
+        - "✅ AM5 + DDR5: va con el 9800X3D o el 9700X, la RAM DDR5 y cualquier gráfica"
+        - "🖥️ ATX con 2 ranuras PCIe x16: la RX 9070 XT arriba y la RX 590 abajo para macOS"
+        - "📶 WiFi + Bluetooth para Windows; en macOS no van: usa el cable de red o cambia el módulo por uno Intel"
+        - "ℹ️ Necesitas caja ATX con 7 ranuras de expansión"
       nueva: "✅ Nueva: ya suele venir con BIOS para Ryzen 9000"
       senales:
-        - si: 'flash\s?back|q-?flash|flash bios|bios (actualizada|al dia|nueva)|ryzen 9000|9800x3d|9000 ready'
+        - si: 'flash\s?back|flash bios|bios (actualizada|al dia|nueva)|ryzen 9000|9800x3d|9700x|9000 ready'
           texto: "✅ Dice que tiene la BIOS al día o botón para actualizarla sin procesador"
-          si_no: "⚠️ Pregunta qué BIOS tiene: con una de antes de finales de 2024 no arranca con el 9800X3D, salvo que tenga botón para actualizarla sin procesador (BIOS FlashBack, Q-Flash Plus)"
+          si_no: "⚠️ Pregunta qué BIOS tiene: con una de antes de finales de 2024 no arranca con un Ryzen 9000, salvo que la actualices con el botón FlashBack"
           solo: usada
-        - si: '\b(asus|prime|tuf|strix)\b'
-          texto: "✅ Las ASUS Prime, TUF y ROG B650/B850 traen botón BIOS FlashBack"
-        - si: '\b(gigabyte|aorus)\b'
-          texto: "ℹ️ Las Gigabyte B650 suelen traer Q-Flash Plus (actualizar la BIOS sin procesador): confírmalo"
-        - si: '\bb[68]50e?m\b|micro\s?-?atx|\bmatx\b'
-          texto: "ℹ️ Micro ATX: cabe en cualquier caja ATX o micro ATX"
-          si_no: "ℹ️ Si es ATX, mira que tu caja sea ATX"
+        - si: '\b(asus|prime|tuf)\b'
+          texto: "✅ Trae botón BIOS FlashBack (actualizar la BIOS sin procesador)"
+        - si: '\btuf\b'
+          texto: "⚠️ No uses la tercera ranura M.2: desactiva la segunda ranura x16 (la de la RX 590)"
 
   # La RX 9070 XT. En 2026 ha estado entre 640 y 725 € nueva.
   - nombre: RX 9070 XT

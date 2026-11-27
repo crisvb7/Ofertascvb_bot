@@ -207,15 +207,17 @@ def test_mensaje_de_placa_usada_lleva_la_compatibilidad(motor_y_av, cfg):
     motor, av = motor_y_av
     placa = cfg.producto("Placa B650/B850")
     placa.precio_nuevo = None
-    pasada(motor, [wp("p", "ASUS Prime B650M-A WiFi II", 90)], placa)
+    pasada(motor, [wp("p", "ASUS Prime B650-PLUS WiFi", 90)], placa)
     texto = av.avisos[0].texto
     assert "🔧 Compatibilidad" in texto and "va con el 9800X3D" in texto
     assert "Pregunta qué BIOS tiene" in texto and "botón BIOS FlashBack" in texto
+    assert "2 ranuras PCIe x16" in texto
 
 
 @pytest.mark.parametrize("producto,titulo,nuevo,desc,esta,no_esta", [
-    ("Placa B650/B850", "Gigabyte B650 Eagle AX", True, "", "ya suele venir con BIOS", "Pregunta qué BIOS"),
-    ("Placa B650/B850", "MSI PRO B650-P WiFi", False, "BIOS actualizada", "BIOS al día", "Pregunta qué BIOS"),
+    ("Placa B650/B850", "ASUS Prime B650-PLUS WiFi", True, "", "ya suele venir con BIOS", "Pregunta qué BIOS"),
+    ("Placa B650/B850", "ASUS TUF Gaming B650-PLUS WiFi", True, "", "tercera ranura M.2", "Pregunta qué BIOS"),
+    ("Placa B650/B850", "MSI B650 Gaming Plus WiFi", False, "BIOS actualizada", "BIOS al día", "Pregunta qué BIOS"),
     ("DDR5 32GB", "Corsair Vengeance DDR5 6000MHz 32GB CL30 EXPO", True, "", "6000 MHz o más", "No dice la velocidad"),
     ("DDR5 32GB", "Kingston 32GB DDR5 4800", False, "", "rinde algo menos", "6000 MHz o más"),
     ("DDR5 32GB", "Memoria RAM DDR5 32GB", False, "", "No dice la velocidad", "EXPO"),
@@ -238,12 +240,13 @@ def test_las_piezas_retiradas_avisan_en_su_indice(motor_y_av):
 
 
 @pytest.mark.parametrize("titulo,esperado", [
-    ("ASUS Prime B650M-A WiFi II", "consola"),
-    ("Gigabyte B650 Eagle AX", "consola"),
-    ("MSI B850M Gaming Plus Wi-Fi", "consola"),
-    ("Placa base WiFi 6E AM5 B650M", "consola"),
-    ("ASUS Prime B650M-R", None),               # sin WiFi
-    ("Gigabyte B650M D3HP sin wifi", None),
+    ("ASUS Prime B650-PLUS WiFi", "consola"),
+    ("MSI B650 Gaming Plus Wi-Fi", "consola"),
+    ("ASUS TUF Gaming B650-PLUS WiFi", "consola"),
+    ("ASUS Prime B650M-A WiFi II", None),       # micro ATX: no caben dos gráficas
+    ("MSI B650M Gaming Plus WiFi", None),
+    ("ASUS Prime B650-PLUS", None),              # sin WiFi
+    ("TUF Gaming B650-PLUS sin wifi", None),
 ])
 def test_placa_solo_con_wifi(cfg, titulo, esperado):
     assert cfg.producto("Placa B650/B850").clasificar(wp("1", titulo, 90))[0] == esperado
