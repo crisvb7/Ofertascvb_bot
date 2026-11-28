@@ -247,7 +247,8 @@ def test_config_real_no_baja_de_300():
     from conftest import RAIZ
     for p in config.cargar(RAIZ / "config.yaml").productos:
         if p.es_componente:            # las piezas de PC tienen sus propios precios
-            assert 0 < p.usado_min < p.usado_max < p.tope and 0 < p.nuevo_min < p.nuevo_max < p.tope, p.nombre
+            # el tope puede ser igual al máximo: alertas «solo por menos de X €» (RX 9070 XT)
+            assert 0 < p.usado_min < p.usado_max <= p.tope and 0 < p.nuevo_min < p.nuevo_max <= p.tope, p.nombre
             continue
         assert p.usado_min >= 300 and p.nuevo_min >= 300, p.nombre
 

@@ -363,10 +363,12 @@ productos:
     tipo: componente
     busquedas: ["rx 9070 xt"]
     incluir: ['(\brx\s?|\b)9070\s?-?xt\b']
-    tope: 900
-    precio_nuevo: 659  # lo que cuesta nueva ahora (noviembre 2026)
-    segunda_mano: {min: 450, max: 600}
-    nuevo: {min: 550, max: 680}
+    # Alerta pedida (28-11-2026): avisar de cualquier RX 9070 XT, nueva o usada, por MENOS DE 700 €.
+    # Lo que cueste 700 € o más no se avisa.
+    tope: 699.99
+    precio_nuevo: 950  # las más baratas nuevas pasan de 900 € (noviembre 2026)
+    segunda_mano: {min: 350, max: 699.99}
+    nuevo: {min: 450, max: 699.99}
     compatibilidad:
       siempre:
         - "✅ PCIe: va en cualquier placa B650/B850 (y también en tu B550)"

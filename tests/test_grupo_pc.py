@@ -34,7 +34,9 @@ def test_config_grupo_de_piezas(cfg):
     piezas = {p.nombre: p for p in cfg.productos if p.es_componente}
     assert {"Fuente 850W Gold", "Disipador doble torre", "SSD NVMe 1TB"} <= set(piezas)
     for p in piezas.values():                      # todas saben cuánto cuestan nuevas
-        assert p.precio_nuevo and p.precio_nuevo <= p.tope, p.nombre
+        assert p.precio_nuevo, p.nombre
+        # el tope solo baja del precio de nueva cuando es una alerta «por menos de X €»
+        assert p.precio_nuevo <= p.tope or p.tope == p.nuevo_max == p.usado_max, p.nombre
 
 
 @pytest.mark.parametrize("producto,titulo,es", [
@@ -250,3 +252,18 @@ def test_las_piezas_retiradas_avisan_en_su_indice(motor_y_av):
 ])
 def test_placa_solo_con_wifi(cfg, titulo, esperado):
     assert cfg.producto("Placa B650/B850").clasificar(wp("1", titulo, 90))[0] == esperado
+
+
+def test_alerta_9070_xt_por_menos_de_700(cfg, estado):
+    # alerta pedida: cualquier RX 9070 XT, nueva o usada, por menos de 700 €; lo de 700 € o más, nada
+    from ofertas.motor import Motor
+    av = AvisadorFalso(con_grupo=True)
+    motor = Motor(cfg, estado, av, pausa=(0, 0))
+    xt = cfg.producto("RX 9070 XT")
+    assert xt.tope == xt.usado_max == xt.nuevo_max == 699.99
+    pasada(motor, [wp("u1", "RX 9070 XT Nitro+", 690), wp("u2", "Sapphire RX 9070 XT", 720)], xt)
+    pasada(motor, [chollo("n1", "Sapphire Pulse RX 9070 XT 16GB", 699.95),
+                   chollo("n2", "PowerColor Reaper RX 9070 XT", 700),
+                   chollo("n3", "ASUS Prime RX 9070 XT", 929)], xt, fuente="chollometro")
+    assert av.categorias == ["pc_rx-9070-xt", "pc_rx-9070-xt"]
+    assert all("Por debajo de tu máximo" in a.texto for a in av.avisos)

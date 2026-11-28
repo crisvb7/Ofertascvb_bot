@@ -1,5 +1,6 @@
 """Wallapop: API interna de búsqueda que usa su propia web (no es pública ni oficial)."""
 from __future__ import annotations
+import math
 
 import random
 import time
@@ -33,7 +34,7 @@ def buscar(sesion, consulta: str, lat: float, lon: float,
     if precio_min:
         params["min_sale_price"] = int(precio_min)
     if precio_max:
-        params["max_sale_price"] = int(precio_max)
+        params["max_sale_price"] = math.ceil(precio_max)
 
     anuncios: list[Anuncio] = []
     for pagina in range(max(1, paginas)):

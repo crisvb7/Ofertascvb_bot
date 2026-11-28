@@ -5,6 +5,7 @@ Cada anuncio de la página trae en su imagen un texto así:
 (título, marca, estado, precio y precio con la protección al comprador).
 """
 from __future__ import annotations
+import math
 
 import html
 import re
@@ -30,7 +31,7 @@ class Vinted:
         if precio_min:
             params.update(price_from=int(precio_min), currency="EUR")
         if precio_max:
-            params.update(price_to=int(precio_max), currency="EUR")
+            params.update(price_to=math.ceil(precio_max), currency="EUR")
         r = self.s.get(self.base + "/catalog", params=params, timeout=30,
                        headers={"Accept": "text/html,application/xhtml+xml"})
         if r.status_code in (401, 403, 429):
